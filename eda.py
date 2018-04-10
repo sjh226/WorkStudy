@@ -18,8 +18,39 @@ def enbase_pull():
 
 	cursor = connection.cursor()
 	SQLCommand = ("""
-		SELECT  *
-		FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory];
+        SELECT ALH. Wellkey
+              ,[BusinessUnit]
+              ,[Area]
+              ,[WellName]
+              ,[OwnerNTID]
+              ,[createdby]
+              ,[Owner Nickname]
+              ,[_id]
+              ,[assetAPI]
+              ,[PriorityLevel]
+              ,[PriorityType]
+              ,[DispatchReason]
+              ,[Person_assigned]
+              ,[Action Date]
+              ,[Action Type - No count]
+              ,[Action Type]
+              ,[Action Type 1]
+              ,[Action Type 2]
+              ,[Comment]
+              ,ALH.DefermentDate
+              ,[Action Status]
+              ,ALH.DefermentGas
+              ,ALH.CleanAvgGas
+        	  ,CASE WHEN ALH.DefermentGas > 0 AND P.MeasuredGas > 0
+        	   THEN (ALH.DefermentGas / PC.CleanAvgGas) * 100
+        	   ELSE 0 END AS PercentDeferment
+          FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] AS ALH
+          JOIN [OperationsDataMart].[Facts].[Production] AS P
+        	ON P.Wellkey = ALH.Wellkey
+        	AND ALH.DefermentDate = P.DateKey
+          JOIN [OperationsDataMart].[Facts].[ProductionCalculations] AS PC
+          	ON PC.Wellkey = ALH.Wellkey
+        	AND ALH.DefermentDate = PC.DateKey
 	""")
 
 	cursor.execute(SQLCommand)
@@ -43,7 +74,7 @@ def enbase_pull():
 def deferment_stats(df):
 	def_dic = {}
 	for action in df['action_type_no_count'].unique():
-		def_dic[action] = df[df['action_type_no_count'] == action]['defermentgas'].mean()
+		def_dic[action] = df[df['action_type_no_count'] == action]['percentdeferment'].mean()
 	return def_dic
 
 def deferment_plot(dic):
@@ -54,7 +85,7 @@ def deferment_plot(dic):
 
 	plt.xticks(rotation='vertical')
 	plt.xlabel('Action Type')
-	plt.ylabel('Average Deferment on Action')
+	plt.ylabel('Average Deferment on Action (Percent)')
 	plt.title('Comparison of Work Action to Average Deferment')
 	plt.tight_layout()
 
@@ -62,9 +93,9 @@ def deferment_plot(dic):
 
 
 if __name__ == '__main__':
-	enb_df = enbase_pull()
-	enb_df.to_csv('data/enb_pull.csv')
+	# enb_df = enbase_pull()
+	# enb_df.to_csv('data/enb_pull.csv', encoding='utf-8')
 	enb_df = pd.read_csv('data/enb_pull.csv')
 
 	def_dic = deferment_stats(enb_df)
-    deferment_plot(def_dic)
+	deferment_plot(def_dic)

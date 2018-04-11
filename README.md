@@ -9,11 +9,11 @@ few key questions:<br><br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;*What should we be doing?*<br><br>
 Building on the last question above, field work will be divided into three categories:<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<span style='color:red'>Red</span>: activity that should not be occurring in the field. These tasks either do not add value or are already automated.<br>
+<span style='color:red'><em>Red</em></span>: activity that should not be occurring in the field. These tasks either do not add value or are already automated.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<span style='color:yellow'>Yellow</span>: activity that adds marginal value or could be automated soon with additional technology.<br>
+<span style='color:yellow'><em>Yellow</em></span>: activity that adds marginal value or could be automated soon with additional technology.<br>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<span style='color:green'>Green</span>: activity that cannot be automated, and should therefore be completed consistently and efficiently.<br><br> This work will require training, Standard Operating Procedures, and checklists for L48 to be a High Reliability Organization. A separate effort led by Kim Krieger will tackle these challenges.
+<span style='color:green'><em>Green</em></span>: activity that cannot be automated, and should therefore be completed consistently and efficiently.<br><br> This work will require training, Standard Operating Procedures, and checklists for L48 to be a High Reliability Organization. A separate effort led by Kim Krieger will tackle these challenges.
 <br>
 ### Scope
 The scope of this study will span the last 6 months to ensure reporting consistency and data quality. The tools built for this study will also be modified for continuous use point forward. The focus will be on BP field technicians. <br><br>

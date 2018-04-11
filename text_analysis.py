@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.cross_validation import train_test_split
 import nltk
@@ -18,9 +18,14 @@ def tokenize(text):
 	return stems
 
 def vectorize(df):
-	vect = TfidfVectorizer(max_df=1.0, min_df=0.0, lowercase=True, \
-						   stop_words='english', tokenizer=tokenize, \
-						   ngram_range=(1,3))
-	X = vect.fit_transform(df['comment'].values)
-	idf = vect.idf_
-	return idf, X
+	# vect = TfidfVectorizer(max_df=1.0, min_df=0.0, lowercase=True, \
+	# 					   stop_words='english', tokenizer=tokenize, \
+	# 					   ngram_range=(1,3))
+	# X = vect.fit_transform(df['comment'].values)
+	# idf = vect.idf_
+
+	count_vec = CountVectorizer(stop_words='english', tokenizer=tokenize, \
+								ngram_range=(1,3))
+	X = count_vec.fit_transform(df['comment'].values)
+
+	return X, count_vec

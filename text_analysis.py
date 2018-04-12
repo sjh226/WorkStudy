@@ -17,15 +17,9 @@ def tokenize(text):
 		stems.append(PorterStemmer().stem(item))
 	return stems
 
-def vectorize(df):
-	# vect = TfidfVectorizer(max_df=1.0, min_df=0.0, lowercase=True, \
-	# 					   stop_words='english', tokenizer=tokenize, \
-	# 					   ngram_range=(1,3))
-	# X = vect.fit_transform(df['comment'].values)
-	# idf = vect.idf_
-
+def vectorize(df, ngram_min=1, ngram_max=3):
 	count_vec = CountVectorizer(stop_words='english', tokenizer=tokenize, \
-								ngram_range=(1,3))
+								ngram_range=(ngram_min,ngram_max))
 	X = count_vec.fit_transform(df['comment'].values)
 
 	return X, count_vec

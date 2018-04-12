@@ -105,10 +105,27 @@ def text_it(df):
 		if idx in top_idx:
 			top_words.append(word)
 
+	X_phrase, count_vec_phrase = vectorize(df_clean, ngram_min=2, ngram_max=3)
+
+	values_phrase = list(np.array(X_phrase.sum(axis=0))[0,:])
+	top_vals_phrase = sorted(values_phrase)[-20:]
+	top_idx_phrase = [values_phrase.index(val) for val in top_vals_phrase]
+
+	top_phrase = []
+	for phrase, idx in count_vec_phrase.vocabulary_.items():
+		if idx in top_idx_phrase:
+			top_phrase.append(phrase)
+
+	for word in top_words:
+		df_clean[word] = df_clean['comment'].apply(lambda x: int(word in x))
+	for phrase in top_phrase:
+		df_clean[phrase] = df_clean['comment'].apply(lambda x: int(phrase in x))
+
 	# Let's return only the phrases
 	print(top_words)
+	print(top_phrase)
 
-	return X, count_vec
+	return df_clean
 
 def deferment_plot(dic):
 	plt.close()
@@ -133,4 +150,4 @@ if __name__ == '__main__':
 	# def_dic = deferment_stats(enb_df)
 	# deferment_plot(def_dic)
 
-	X, co = text_it(enb_df)
+	df_clean = text_it(enb_df)

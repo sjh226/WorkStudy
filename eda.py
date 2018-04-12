@@ -121,11 +121,27 @@ def text_it(df):
 	for phrase in top_phrase:
 		df_clean[phrase] = df_clean['comment'].apply(lambda x: int(phrase in x))
 
-	# Let's return only the phrases
-	print(top_words)
-	print(top_phrase)
+	phrases = top_words + top_phrase
 
-	return df_clean
+	return df_clean, phrases
+
+def nlp_plot(df, phrases):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+	dic = {}
+	for phrase in phrases:
+		dic[phrase] = df[phrase].sum()
+
+	ax.bar(sort_dic.keys(), sort_dic.values(), .9)
+
+	plt.xticks(rotation='vertical')
+	plt.xlabel('Action Type')
+	plt.ylabel('Count of Actions in Comment')
+	plt.title('Distribution of Action Words in Comment Section')
+	plt.tight_layout()
+
+	plt.savefig('figures/phrase_count.png')
 
 def deferment_plot(dic):
 	plt.close()
@@ -150,4 +166,8 @@ if __name__ == '__main__':
 	# def_dic = deferment_stats(enb_df)
 	# deferment_plot(def_dic)
 
-	df_clean = text_it(enb_df)
+	df_clean, phrases = text_it(enb_df)
+	df_clean.to_csv('data/phrase_df.csv', encoding='utf-8')
+	df_clean = pd.read_csv('data/phrase_df.csv')
+
+	nlp_plot(df_clean, phrases)

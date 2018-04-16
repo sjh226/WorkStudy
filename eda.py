@@ -133,7 +133,7 @@ def nlp_plot(df, phrases):
 	for phrase in phrases:
 		dic[phrase] = df[phrase].sum()
 
-	ax.bar(sort_dic.keys(), sort_dic.values(), .9)
+	ax.bar(dic.keys(), dic.values(), .9)
 
 	plt.xticks(rotation='vertical')
 	plt.xlabel('Action Type')

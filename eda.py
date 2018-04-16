@@ -105,10 +105,10 @@ def text_it(df):
 		if idx in top_idx:
 			top_words.append(word)
 
-	X_phrase, count_vec_phrase = vectorize(df_clean, ngram_min=2, ngram_max=3)
+	X_phrase, count_vec_phrase = vectorize(df_clean, ngram_min=3, ngram_max=4)
 
 	values_phrase = list(np.array(X_phrase.sum(axis=0))[0,:])
-	top_vals_phrase = sorted(values_phrase)[-20:]
+	top_vals_phrase = sorted(values_phrase)[-30:]
 	top_idx_phrase = [values_phrase.index(val) for val in top_vals_phrase]
 
 	top_phrase = []
@@ -121,7 +121,8 @@ def text_it(df):
 	for phrase in top_phrase:
 		df_clean[phrase] = df_clean['comment'].apply(lambda x: int(phrase in x))
 
-	phrases = top_words + top_phrase
+	# phrases = top_words + top_phrase
+	phrases = top_phrase
 
 	return df_clean, phrases
 
@@ -138,10 +139,10 @@ def nlp_plot(df, phrases):
 	plt.xticks(rotation='vertical')
 	plt.xlabel('Action Type')
 	plt.ylabel('Count of Actions in Comment')
-	plt.title('Distribution of Action Words in Comment Section')
+	plt.title('Distribution of Action Phrases in Comment Section')
 	plt.tight_layout()
 
-	plt.savefig('figures/phrase_count.png')
+	plt.savefig('figures/3phrase_count.png')
 
 def deferment_plot(dic):
 	plt.close()
@@ -159,8 +160,8 @@ def deferment_plot(dic):
 
 
 if __name__ == '__main__':
-	# enb_df = enbase_pull()
-	# enb_df.to_csv('data/enb_pull.csv', encoding='utf-8')
+	enb_df = enbase_pull()
+	enb_df.to_csv('data/enb_pull.csv', encoding='utf-8')
 	enb_df = pd.read_csv('data/enb_pull.csv')
 
 	# def_dic = deferment_stats(enb_df)

@@ -97,7 +97,7 @@ def text_it(df):
 	X, count_vec = vectorize(df_clean)
 
 	values = list(np.array(X.sum(axis=0))[0,:])
-	top_vals = sorted(values)[-20:]
+	top_vals = sorted(values)[-50:]
 	top_idx = [values.index(val) for val in top_vals]
 
 	top_words = []
@@ -105,10 +105,10 @@ def text_it(df):
 		if idx in top_idx:
 			top_words.append(word)
 
-	X_phrase, count_vec_phrase = vectorize(df_clean, ngram_min=3, ngram_max=4)
+	X_phrase, count_vec_phrase = vectorize(df_clean, ngram_min=2, ngram_max=4)
 
 	values_phrase = list(np.array(X_phrase.sum(axis=0))[0,:])
-	top_vals_phrase = sorted(values_phrase)[-30:]
+	top_vals_phrase = sorted(values_phrase)[-50:]
 	top_idx_phrase = [values_phrase.index(val) for val in top_vals_phrase]
 
 	top_phrase = []
@@ -116,13 +116,17 @@ def text_it(df):
 		if idx in top_idx_phrase:
 			top_phrase.append(phrase)
 
+	df_clean['phrases'] = np.full(df.shape[0], 0)
+
 	for word in top_words:
 		df_clean[word] = df_clean['comment'].apply(lambda x: int(word in x))
+		df_clean['phrases'] += df_clean[word]
 	for phrase in top_phrase:
 		df_clean[phrase] = df_clean['comment'].apply(lambda x: int(phrase in x))
+		df_clean['phrases'] += df_clean[phrase]
 
-	# phrases = top_words + top_phrase
-	phrases = top_phrase
+	phrases = top_words + top_phrase
+	# phrases = top_phrase
 
 	return df_clean, phrases
 
@@ -160,8 +164,8 @@ def deferment_plot(dic):
 
 
 if __name__ == '__main__':
-	enb_df = enbase_pull()
-	enb_df.to_csv('data/enb_pull.csv', encoding='utf-8')
+	# enb_df = enbase_pull()
+	# enb_df.to_csv('data/enb_pull.csv', encoding='utf-8')
 	enb_df = pd.read_csv('data/enb_pull.csv')
 
 	# def_dic = deferment_stats(enb_df)
@@ -171,4 +175,4 @@ if __name__ == '__main__':
 	df_clean.to_csv('data/phrase_df.csv', encoding='utf-8')
 	df_clean = pd.read_csv('data/phrase_df.csv')
 
-	nlp_plot(df_clean, phrases)
+	# nlp_plot(df_clean, phrases)

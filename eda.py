@@ -97,7 +97,7 @@ def text_it(df):
 	X, count_vec = vectorize(df_clean)
 
 	values = list(np.array(X.sum(axis=0))[0,:])
-	top_vals = sorted(values)[-50:]
+	top_vals = sorted(values)[-100:]
 	top_idx = [values.index(val) for val in top_vals]
 
 	top_words = []
@@ -108,7 +108,7 @@ def text_it(df):
 	X_phrase, count_vec_phrase = vectorize(df_clean, ngram_min=2, ngram_max=4)
 
 	values_phrase = list(np.array(X_phrase.sum(axis=0))[0,:])
-	top_vals_phrase = sorted(values_phrase)[-50:]
+	top_vals_phrase = sorted(values_phrase)[-100:]
 	top_idx_phrase = [values_phrase.index(val) for val in top_vals_phrase]
 
 	top_phrase = []
@@ -129,6 +129,18 @@ def text_it(df):
 	# phrases = top_phrase
 
 	return df_clean, phrases
+
+def check_phrases(df, phrases):
+	df['action'] = np.full(df.shape[0], '')
+
+	for phrase in phrases:
+		df['act_count'] = df['comment'].apply(lambda x: int(phrase in str(x)))
+		df.loc[df['act_count'] > 0, 'action'] += \
+			np.full(df[df['act_count'] > 0].shape[0], phrase + ' ')
+
+	df['action'].replace('', np.nan, inplace=True)
+
+	return df
 
 def nlp_plot(df, phrases):
 	plt.close()
@@ -171,8 +183,11 @@ if __name__ == '__main__':
 	# def_dic = deferment_stats(enb_df)
 	# deferment_plot(def_dic)
 
-	df_clean, phrases = text_it(enb_df)
-	df_clean.to_csv('data/phrase_df.csv', encoding='utf-8')
+	# df_clean, phrases = text_it(enb_df)
+	# df_clean.to_csv('data/phrase_df.csv', encoding='utf-8')
 	df_clean = pd.read_csv('data/phrase_df.csv')
 
 	# nlp_plot(df_clean, phrases)
+
+	action_phrases = list(np.genfromtxt('data/action_phrases.csv', dtype=str, delimiter=','))
+	p_check_df = check_phrases(df_clean, action_phrases)

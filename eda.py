@@ -142,6 +142,26 @@ def check_phrases(df, phrases):
 
 	return df
 
+def nlp_action_plot(df, phrases):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+	ph_df = df[df['action'].notnull()]
+
+	dic = {}
+	for phrase in phrases:
+		dic[phrase] = ph_df[ph_df['action'].str.contains(phrase)].shape[0]
+
+	ax.bar(dic.keys(), dic.values(), .9)
+
+	plt.xticks(rotation='vertical')
+	plt.xlabel('Action Type')
+	plt.ylabel('Count of Actions')
+	plt.title('Distribution of Action Categorization from Free Text')
+	plt.tight_layout()
+
+	plt.savefig('figures/picked_actions.png')
+
 def nlp_plot(df, phrases):
 	plt.close()
 	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
@@ -191,3 +211,4 @@ if __name__ == '__main__':
 
 	action_phrases = list(np.genfromtxt('data/action_phrases.csv', dtype=str, delimiter=','))
 	p_check_df = check_phrases(df_clean, action_phrases)
+	nlp_action_plot(p_check_df, action_phrases)

@@ -7,6 +7,8 @@ from text_analysis import tokenize, vectorize
 import time
 import heapq
 import operator
+import urllib
+import sqlalchemy
 
 
 def enbase_pull():
@@ -45,9 +47,9 @@ def enbase_pull():
 			  ,[Action Status]
 			  ,ALH.DefermentGas
 			  ,ALH.CleanAvgGas
-			  ,CASE WHEN ALH.DefermentGas > 0 AND P.MeasuredGas > 0
-			   THEN (ALH.DefermentGas / PC.CleanAvgGas) * 100
-			   ELSE 0 END AS PercentDeferment
+			  --,CASE WHEN ALH.DefermentGas > 0 AND P.MeasuredGas > 0
+			  -- THEN (ALH.DefermentGas / PC.CleanAvgGas) * 100
+			  -- ELSE 0 END AS PercentDeferment
 		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] AS ALH
 		  JOIN [OperationsDataMart].[Facts].[Production] AS P
 			ON P.Wellkey = ALH.Wellkey
@@ -139,8 +141,19 @@ def check_phrases(df, phrases):
 			np.full(df[df['act_count'] > 0].shape[0], phrase + ' ')
 
 	df['action'].replace('', np.nan, inplace=True)
+	df.loc['action', :] = df['action'].str.rstrip()
 
 	return df
+
+def sql_push(df, table):
+    params = urllib.parse.quote_plus('Driver={SQL Server Native Client 11.0};\
+									 Server=SQLDW-L48.BP.Com;\
+									 Database=TeamOperationsAnalytics;\
+									 trusted_connection=yes'
+                                     )
+    engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
+
+    df.to_sql(table, engine, schema='dbo', if_exists='replace', index=False)
 
 def nlp_action_plot(df, phrases):
 	plt.close()
@@ -211,4 +224,7 @@ if __name__ == '__main__':
 
 	action_phrases = list(np.genfromtxt('data/action_phrases.csv', dtype=str, delimiter=','))
 	p_check_df = check_phrases(df_clean, action_phrases)
-	nlp_action_plot(p_check_df, action_phrases)
+	# nlp_action_plot(p_check_df, action_phrases)
+
+	sql_df = p_check_df[['wellkey', 'ownerntid', '_id', 'action']]
+	sql_push(sql_df, 'ActionPhrases')

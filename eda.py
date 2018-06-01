@@ -133,15 +133,18 @@ def text_it(df):
 	return df_clean, phrases
 
 def check_phrases(df, phrases):
-	df['action'] = np.full(df.shape[0], '')
+	df.loc[:, 'action'] = np.full(df.shape[0], '')
+	df.loc[:, 'comment'] = df.loc[:, 'comment'].astype(str)
 
 	for phrase in phrases:
-		df['act_count'] = df['comment'].apply(lambda x: int(phrase in str(x)))
-		df.loc[df['act_count'] > 0, 'action'] += \
-			np.full(df[df['act_count'] > 0].shape[0], phrase + ' ')
+		df['act_count'] = df.loc[:, 'comment'].apply(lambda x: \
+													 sum(list(map(lambda v: \
+													 int(v in x), phrase.split()))))
+		df.loc[df['act_count'] == len(phrase.split()), 'action'] += \
+			np.full(df.loc[df['act_count'] == len(phrase.split()), :].shape[0], phrase + ' ')
 
 	df['action'].replace('', np.nan, inplace=True)
-	df.loc['action', :] = df['action'].str.rstrip()
+	df.loc[:, 'action'] = df.loc[:, 'action'].str.rstrip()
 
 	return df
 
@@ -154,6 +157,29 @@ def sql_push(df, table):
     engine = sqlalchemy.create_engine('mssql+pyodbc:///?odbc_connect=%s' % params)
 
     df.to_sql(table, engine, schema='dbo', if_exists='replace', index=False)
+
+def action_merge():
+    try:
+        connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
+                                    r'Server=SQLDW-L48.BP.Com;'
+                                    r'Database=TeamOptimizationEngineering;'
+									r'UID=ThundercatIO;'
+									r'PWD=thund3rc@t10;'
+                                    )
+    except pyodbc.Error:
+        print("Connection Error")
+        sys.exit()
+
+    cursor = connection.cursor()
+    SQLCommand = ("""
+		UPDATE [TeamOptimizationEngineering].[Reporting].[ActionList]
+			SET CommentAction = AP.action
+			FROM [TeamOptimizationEngineering].[Reporting].[ActionList] AS AL
+				LEFT OUTER JOIN [TeamOperationsAnalytics].[dbo].[ActionPhrases] AS AP
+				  ON AP._id = AL._id;
+	""")
+
+    cursor.execute(SQLCommand)
 
 def nlp_action_plot(df, phrases):
 	plt.close()
@@ -223,8 +249,9 @@ if __name__ == '__main__':
 	# nlp_plot(df_clean, phrases)
 
 	action_phrases = list(np.genfromtxt('data/action_phrases.csv', dtype=str, delimiter=','))
-	p_check_df = check_phrases(df_clean, action_phrases)
+	p_check_df = check_phrases(df_clean.iloc[:,:], action_phrases)
 	# nlp_action_plot(p_check_df, action_phrases)
 
 	sql_df = p_check_df[['wellkey', 'ownerntid', '_id', 'action']]
 	sql_push(sql_df, 'ActionPhrases')
+	action_merge()

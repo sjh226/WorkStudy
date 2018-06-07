@@ -24,39 +24,8 @@ def enbase_pull():
 
 	cursor = connection.cursor()
 	SQLCommand = ("""
-		SELECT ALH. Wellkey
-			  ,[BusinessUnit]
-			  ,[Area]
-			  ,[WellName]
-			  ,[OwnerNTID]
-			  ,[createdby]
-			  ,[Owner Nickname]
-			  ,[_id]
-			  ,[assetAPI]
-			  ,[PriorityLevel]
-			  ,[PriorityType]
-			  ,[DispatchReason]
-			  ,[Person_assigned]
-			  ,[Action Date]
-			  ,[Action Type - No count]
-			  ,[Action Type]
-			  ,[Action Type 1]
-			  ,[Action Type 2]
-			  ,[Comment]
-			  ,ALH.DefermentDate
-			  ,[Action Status]
-			  ,ALH.DefermentGas
-			  ,ALH.CleanAvgGas
-			  --,CASE WHEN ALH.DefermentGas > 0 AND P.MeasuredGas > 0
-			  -- THEN (ALH.DefermentGas / PC.CleanAvgGas) * 100
-			  -- ELSE 0 END AS PercentDeferment
+		SELECT *
 		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] AS ALH
-		  JOIN [OperationsDataMart].[Facts].[Production] AS P
-			ON P.Wellkey = ALH.Wellkey
-			AND ALH.DefermentDate = P.DateKey
-		  JOIN [OperationsDataMart].[Facts].[ProductionCalculations] AS PC
-			  ON PC.Wellkey = ALH.Wellkey
-			AND ALH.DefermentDate = PC.DateKey
 	""")
 
 	cursor.execute(SQLCommand)
@@ -165,16 +134,17 @@ def action_merge():
                                     r'Database=TeamOptimizationEngineering;'
 									r'UID=ThundercatIO;'
 									r'PWD=thund3rc@t10;'
-                                    )
+									)
+
     except pyodbc.Error:
         print("Connection Error")
         sys.exit()
 
     cursor = connection.cursor()
     SQLCommand = ("""
-		UPDATE [TeamOptimizationEngineering].[Reporting].[ActionList]
+		UPDATE [TeamOptimizationEngineering].[Reporting].[ActionListHistory]
 			SET CommentAction = AP.action
-			FROM [TeamOptimizationEngineering].[Reporting].[ActionList] AS AL
+			FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] AS AL
 				LEFT OUTER JOIN [TeamOperationsAnalytics].[dbo].[ActionPhrases] AS AP
 				  ON AP._id = AL._id;
 	""")
@@ -235,15 +205,15 @@ def deferment_plot(dic):
 
 
 if __name__ == '__main__':
-	# enb_df = enbase_pull()
-	# enb_df.to_csv('data/enb_pull.csv', encoding='utf-8')
+	enb_df = enbase_pull()
+	enb_df.to_csv('data/enb_pull.csv', encoding='utf-8')
 	enb_df = pd.read_csv('data/enb_pull.csv')
 
 	# def_dic = deferment_stats(enb_df)
 	# deferment_plot(def_dic)
 
-	# df_clean, phrases = text_it(enb_df)
-	# df_clean.to_csv('data/phrase_df.csv', encoding='utf-8')
+	df_clean, phrases = text_it(enb_df)
+	df_clean.to_csv('data/phrase_df.csv', encoding='utf-8')
 	df_clean = pd.read_csv('data/phrase_df.csv')
 
 	# nlp_plot(df_clean, phrases)

@@ -103,7 +103,7 @@ def plunger_insp(df):
 	plt.xticks(list(range(p_df.shape[0]))[::5], months)
 	plt.xticks(rotation='vertical')
 	plt.legend()
-	plt.title('Distrobution of Plunger Inspections and Changes by Week')
+	plt.title('Distribution of Plunger Inspections and Changes by Week')
 	plt.xlabel('Week')
 	plt.ylabel('Count of Plunger-Related Events')
 	plt.savefig('figures/plunger_inspect_clean.png')

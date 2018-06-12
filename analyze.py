@@ -36,6 +36,47 @@ def action_pull():
 
 	return df.drop_duplicates()
 
+def gauge_pull():
+	try:
+		connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
+									r'Server=SQLDW-L48.BP.Com;'
+									r'Database=TeamOptimizationEngineering;'
+									r'trusted_connection=yes'
+									)
+	except pyodbc.Error:
+		print("Connection Error")
+		sys.exit()
+
+	cursor = connection.cursor()
+	SQLCommand = ("""
+		SELECT	Wellkey
+				,BusinessUnit
+				,OwnerNTID
+				,[Action Date]
+				,[Action Type - No count]
+				,Comment
+				,CommentAction
+		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory]
+		  WHERE [Action Type - No count] = 'Gauge'
+		     OR (CommentAction LIKE '%gaug%'
+				AND [Action Type - No count] = 'WM Completed')
+		ORDER BY Wellkey, [Action Date]
+	""")
+
+	cursor.execute(SQLCommand)
+	results = cursor.fetchall()
+
+	df = pd.DataFrame.from_records(results)
+	connection.close()
+
+	try:
+		df.columns = pd.DataFrame(np.matrix(cursor.description))[0]
+	except:
+		df = None
+		print('Dataframe is empty')
+
+	return df.drop_duplicates()
+
 def pm_dist(df):
 	plt.close()
 	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
@@ -103,10 +144,48 @@ def plunger_insp(df):
 	plt.xticks(list(range(p_df.shape[0]))[::5], months)
 	plt.xticks(rotation='vertical')
 	plt.legend()
-	plt.title('Distrobution of Plunger Inspections and Changes by Week')
+	plt.title('Distribution of Plunger Inspections and Changes by Week')
 	plt.xlabel('Week')
 	plt.ylabel('Count of Plunger-Related Events')
 	plt.savefig('figures/plunger_inspect_clean.png')
+
+def gauge_events(df):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+	df['gauge'] = df.loc[:, 'Action Type - No count'].str.contains('Gauge').astype(int)
+	df['wm'] = df.loc[:, 'Action Type - No count'].str.contains('WM').astype(int)
+
+	g_df = df.loc[:, ['Wellkey', 'BusinessUnit', 'Action Date', 'gauge', 'wm']]
+	g_df = g_df.groupby(['Wellkey', 'BusinessUnit', \
+						 pd.Grouper(freq='D', key='Action Date')]).sum().reset_index()
+
+	wm_df = g_df[(g_df['gauge'] == 0) & (g_df['wm'] == 1)].groupby(\
+			pd.Grouper(freq='W-MON', key='Action Date')).sum().reset_index()
+	both_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 1)].groupby(\
+			pd.Grouper(freq='W-MON', key='Action Date')).sum().reset_index()
+	gauge_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 0)].groupby(\
+			pd.Grouper(freq='W-MON', key='Action Date')).sum().reset_index()
+
+	print(wm_df['Action Date'].unique())
+	print(both_df['Action Date'].unique())
+	print(gauge_df['Action Date'].unique())
+
+	# RUN MONTHLY TOTALS AND CHECK 
+
+	# ax.bar(range(_df.shape[0]), p_df['inspect'].values, .8, color='#6b2ecc', \
+	# 	   alpha=.8, label='Plunger Inspections')
+	# ax.bar(range(p_df.shape[0]), p_df['change'].values, .8, color='#3a7bd1', \
+	# 	   alpha=.4, label='Plunger Changes')
+	# plt.xticks(list(range(p_df.shape[0]))[::5], months)
+	# plt.xticks(rotation='vertical')
+	# plt.legend()
+	# plt.title('Distribution of Plunger Inspections and Changes by Week')
+	# plt.xlabel('Week')
+	# plt.ylabel('Count of Plunger-Related Events')
+	# plt.savefig('figures/plunger_inspect_clean.png')
+
+	return g_df
 
 
 if __name__ == '__main__':
@@ -114,7 +193,10 @@ if __name__ == '__main__':
 	# action_df.to_csv('data/comment_action.csv')
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
 
+	gauge_df = gauge_pull()
+	g_df = gauge_events(gauge_df)
+
 	# pm_dist(a_df[a_df['Comment'].notnull()])
 
 	# plunger_events(a_df)
-	plunger_insp(a_df)
+	# plunger_insp(a_df)

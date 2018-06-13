@@ -168,8 +168,6 @@ def gauge_events(df):
 		gauge_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 0) & (g_df['BusinessUnit'] == bu)].groupby(\
 				pd.Grouper(freq='M', key='Action Date')).count().reset_index()
 
-		# ax.bar(gauge_df['Action Date'].values, gauge_df['gauge'].values, 25, color='#9baaff', \
-		# 	   alpha=.8, label='Gauging Events')
 		axis.bar(both_df['Action Date'].values, both_df['gauge'].values, 25, color='#0e2bce', \
 			   alpha=.6, label='WM Gauges')
 		axis.bar(wm_df['Action Date'].values, wm_df['gauge'].values, 25, color='#000d56', \
@@ -181,21 +179,34 @@ def gauge_events(df):
 		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
 		axis.set_xlabel('Month')
 		axis.set_ylabel('Count of Events')
-		# plt.xticks(list(range(p_df.shape[0]))[::5], months)
 
 	plt.suptitle('WM Entries Compared to Gauging Events', y=.995)
 	plt.tight_layout()
 	plt.savefig('figures/gauging_gap.png')
 
-	extra_wm_df = g_df[(g_df['gauge'] == 0) & (g_df['wm'] == 1)].groupby('BusinessUnit').sum().reset_index()
-	match_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 1)].groupby('BusinessUnit').sum().reset_index()
+	extra_wm_df = g_df[(g_df['gauge'] == 0) & (g_df['wm'] == 1)]\
+				  .groupby('BusinessUnit').sum().reset_index()
+	match_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 1)]\
+			   .groupby('BusinessUnit').sum().reset_index()
 	extra_wm_df.rename(index=str, columns={'wm':'wm_entry'}, inplace=True)
 	match_df.rename(index=str, columns={'gauge':'matched_entry'}, inplace=True)
 
 	g_df = extra_wm_df.merge(match_df, on='BusinessUnit')
 	g_df = g_df.loc[:, ['BusinessUnit', 'wm_entry', 'matched_entry']]
 
-	return
+	gauge_table_plot(g_df)
+	return g_df
+
+def gauge_table_plot(df):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(6, 2))
+
+	ax.axis('off')
+	ax.table(cellText=df.values, colLabels=['BusinessUnit', 'Single WM Entry', \
+											'Matched Gauge to WM'], loc='center')
+	plt.tight_layout()
+	plt.title('Comparison of WM Entires to Those with Matched Events', y=.8)
+	plt.savefig('figures/gauge_table.png')
 
 
 if __name__ == '__main__':

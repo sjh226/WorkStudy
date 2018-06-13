@@ -151,7 +151,7 @@ def plunger_insp(df):
 
 def gauge_events(df):
 	plt.close()
-	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+	fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
 
 	df['gauge'] = df.loc[:, 'Action Type - No count'].str.contains('Gauge').astype(int)
 	df['wm'] = df.loc[:, 'Action Type - No count'].str.contains('WM').astype(int)
@@ -160,32 +160,42 @@ def gauge_events(df):
 	g_df = g_df.groupby(['Wellkey', 'BusinessUnit', \
 						 pd.Grouper(freq='D', key='Action Date')]).sum().reset_index()
 
-	wm_df = g_df[(g_df['gauge'] == 0) & (g_df['wm'] == 1)].groupby(\
-			pd.Grouper(freq='W-MON', key='Action Date')).sum().reset_index()
-	both_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 1)].groupby(\
-			pd.Grouper(freq='W-MON', key='Action Date')).sum().reset_index()
-	gauge_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 0)].groupby(\
-			pd.Grouper(freq='W-MON', key='Action Date')).sum().reset_index()
+	for bu, axis in zip(g_df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
+		wm_df = g_df[(g_df['gauge'] == 0) & (g_df['wm'] == 1) & (g_df['BusinessUnit'] == bu)].groupby(\
+				pd.Grouper(freq='M', key='Action Date')).count().reset_index()
+		both_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 1) & (g_df['BusinessUnit'] == bu)].groupby(\
+				pd.Grouper(freq='M', key='Action Date')).count().reset_index()
+		gauge_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 0) & (g_df['BusinessUnit'] == bu)].groupby(\
+				pd.Grouper(freq='M', key='Action Date')).count().reset_index()
 
-	print(wm_df['Action Date'].unique())
-	print(both_df['Action Date'].unique())
-	print(gauge_df['Action Date'].unique())
+		# ax.bar(gauge_df['Action Date'].values, gauge_df['gauge'].values, 25, color='#9baaff', \
+		# 	   alpha=.8, label='Gauging Events')
+		axis.bar(both_df['Action Date'].values, both_df['gauge'].values, 25, color='#0e2bce', \
+			   alpha=.6, label='WM Gauges')
+		axis.bar(wm_df['Action Date'].values, wm_df['gauge'].values, 25, color='#000d56', \
+			   alpha=.4, label='WM Events')
+		axis.set_title('{}'.format(bu))
+		axis.legend()
+		axis.xaxis.set_visible(True)
+		axis.yaxis.set_visible(True)
+		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
+		axis.set_xlabel('Month')
+		axis.set_ylabel('Count of Events')
+		# plt.xticks(list(range(p_df.shape[0]))[::5], months)
 
-	# RUN MONTHLY TOTALS AND CHECK 
+	plt.suptitle('WM Entries Compared to Gauging Events', y=.995)
+	plt.tight_layout()
+	plt.savefig('figures/gauging_gap.png')
 
-	# ax.bar(range(_df.shape[0]), p_df['inspect'].values, .8, color='#6b2ecc', \
-	# 	   alpha=.8, label='Plunger Inspections')
-	# ax.bar(range(p_df.shape[0]), p_df['change'].values, .8, color='#3a7bd1', \
-	# 	   alpha=.4, label='Plunger Changes')
-	# plt.xticks(list(range(p_df.shape[0]))[::5], months)
-	# plt.xticks(rotation='vertical')
-	# plt.legend()
-	# plt.title('Distribution of Plunger Inspections and Changes by Week')
-	# plt.xlabel('Week')
-	# plt.ylabel('Count of Plunger-Related Events')
-	# plt.savefig('figures/plunger_inspect_clean.png')
+	extra_wm_df = g_df[(g_df['gauge'] == 0) & (g_df['wm'] == 1)].groupby('BusinessUnit').sum().reset_index()
+	match_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 1)].groupby('BusinessUnit').sum().reset_index()
+	extra_wm_df.rename(index=str, columns={'wm':'wm_entry'}, inplace=True)
+	match_df.rename(index=str, columns={'gauge':'matched_entry'}, inplace=True)
 
-	return g_df
+	g_df = extra_wm_df.merge(match_df, on='BusinessUnit')
+	g_df = g_df.loc[:, ['BusinessUnit', 'wm_entry', 'matched_entry']]
+
+	return
 
 
 if __name__ == '__main__':

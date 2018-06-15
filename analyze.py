@@ -169,9 +169,9 @@ def gauge_events(df):
 				pd.Grouper(freq='M', key='Action Date')).count().reset_index()
 
 		axis.bar(both_df['Action Date'].values, both_df['gauge'].values, 25, color='#0e2bce', \
-			   alpha=.6, label='WM Gauges')
+			   alpha=.6, label='Matched Gauge Report')
 		axis.bar(wm_df['Action Date'].values, wm_df['gauge'].values, 25, color='#000d56', \
-			   alpha=.4, label='WM Events')
+			   alpha=.4, label='Unmatched WM Gauge')
 		axis.set_title('{}'.format(bu))
 		axis.legend()
 		axis.xaxis.set_visible(True)
@@ -199,11 +199,11 @@ def gauge_events(df):
 
 def gauge_table_plot(df):
 	plt.close()
-	fig, ax = plt.subplots(1, 1, figsize=(6, 2))
+	fig, ax = plt.subplots(1, 1, figsize=(7, 2))
 
 	ax.axis('off')
-	ax.table(cellText=df.values, colLabels=['BusinessUnit', 'Single WM Entry', \
-											'Matched Gauge to WM'], loc='center')
+	ax.table(cellText=df.values, colLabels=['BusinessUnit', 'WM Gauging Activity without Report', \
+											'Matched Gauge Report'], loc='center')
 	plt.tight_layout()
 	plt.title('Comparison of WM Entires to Those with Matched Events', y=.8)
 	plt.savefig('figures/gauge_table.png')

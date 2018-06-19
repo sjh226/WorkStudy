@@ -168,10 +168,11 @@ def gauge_events(df):
 		gauge_df = g_df[(g_df['gauge'] == 1) & (g_df['wm'] == 0) & (g_df['BusinessUnit'] == bu)].groupby(\
 				pd.Grouper(freq='M', key='Action Date')).count().reset_index()
 
-		axis.bar(both_df['Action Date'].values, both_df['gauge'].values, 12, color='#0e2bce', \
-			   alpha=.6, label='Matched Gauge Report')
-		axis.bar(wm_df['Action Date'].values + np.timedelta64(12, 'D'), wm_df['gauge'].values, 12, color='#000d56', \
-			   alpha=.4, label='Unmatched WM Gauge')
+		axis.bar(both_df['Action Date'].values, both_df['gauge'].values, 12,
+				 color='#0e2bce', alpha=.6, label='Matched Gauge Report')
+		axis.bar(wm_df['Action Date'].values + np.timedelta64(12, 'D'),
+				 wm_df['gauge'].values, 12, color='#000d56', alpha=.4,
+				 label='Unmatched WM Gauge')
 		axis.set_title('{}'.format(bu))
 		axis.legend()
 		axis.xaxis.set_visible(True)

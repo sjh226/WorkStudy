@@ -82,9 +82,25 @@ def dispatch_work(df):
 		plt.ylabel('Count of Actions')
 		plt.savefig('figures/completed_dispatch_{}.png'.format(bu.lower()))
 
+def missed_dispatch(df):
+	for bu in df['BusinessUnit'].unique():
+		plt.close()
+
+		count_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
+
+		plt.bar(count_df['PriorityLevel'].values, count_df['LocationID'].values, .8,
+				color='#7a66ff')
+
+		plt.title('Incomplete Dispatch Actions by Priority Level for {}'.format(bu))
+		plt.xlabel('Priority Level')
+		plt.ylabel('Count of Actions')
+		plt.savefig('figures/missed_dispatch_{}.png'.format(bu.lower()))
+
 
 if __name__ == '__main__':
 	df = dispatch_pull()
 
-	dispatch_work(df.loc[df['Action Type - No count'].notnull(),
-						 ['PriorityLevel', 'LocationID', 'BusinessUnit']])
+	# dispatch_work(df.loc[df['Action Type - No count'].notnull(),
+	# 					 ['PriorityLevel', 'LocationID', 'BusinessUnit']])
+	missed_dispatch(df.loc[df['Action Type - No count'].isnull(),
+						   ['PriorityLevel', 'LocationID', 'BusinessUnit']])

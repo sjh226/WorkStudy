@@ -18,45 +18,40 @@ def dispatch_pull():
 
 	cursor = connection.cursor()
 	SQLCommand = ("""
-        SELECT ALH.[Wellkey]
-              ,ALH.[BusinessUnit]
-              ,ALH.[Area]
-              ,ALH.[WellName]
-              ,[OwnerNTID]
-              ,[assetAPI]
-              ,ALH.[PriorityLevel]
-              ,[PriorityType]
-              ,[DispatchReason]
-              ,ALH.[Person_assigned] AS ActionAssigned
-        	  ,D.Person_assigned AS DispatchAssigned
-              ,[Action Date]
-              ,[Action Type - No count]
-              ,[Action Type]
-              ,[Action Type 1]
-              ,[Action Type 2]
-              ,[Comment]
-              ,[CommentAction]
-          FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] ALH
-          JOIN [OperationsDataMart].[Dimensions].[Wells] W
-            ON W.Wellkey = ALH.Wellkey
-          LEFT OUTER JOIN (SELECT	FacilityKey
-        							,D.LocationID
-        							,CalcDate
-        							,SiteName
-        							,PriorityLevel
-        							,Reason
-        							,Person_assigned
-        							,Job_Rank
-        					  FROM [TeamOptimizationEngineering].[dbo].[L48_Dispatch] D
-        					INNER JOIN
-        						(SELECT  LocationID
-        								 ,MAX(CalcDate) AS MDate
-        						 FROM [TeamOptimizationEngineering].[dbo].[L48_Dispatch]
-        						 GROUP BY LocationID, CAST(CalcDate AS DATE)) AS MD
-        					ON	MD.LocationID = D.LocationID
-        					AND MD.MDate = D.CalcDate) D
-          ON D.FacilityKey = W.Facilitykey
-          AND CAST(D.CalcDate AS DATE) = CAST(ALH.[Action Date] AS DATE)
+		SELECT	D.FacilityKey
+				,D.LocationID
+				,D.CalcDate
+				,D.SiteName
+				,D.PriorityLevel
+				,D.Reason
+				,D.Person_assigned
+				,ALH.[Owner Nickname]
+				,F.BusinessUnit
+				,D.Job_Rank
+				,ALH.[Action Type - No count]
+		  FROM (SELECT	FacilityKey
+						,D.LocationID
+						,CalcDate
+						,SiteName
+						,PriorityLevel
+						,Reason
+						,Person_assigned
+						,Job_Rank
+					FROM [TeamOptimizationEngineering].[dbo].[L48_Dispatch] D
+				INNER JOIN
+					(SELECT  LocationID
+								,MAX(CalcDate) AS MDate
+						FROM [TeamOptimizationEngineering].[dbo].[L48_Dispatch]
+						GROUP BY LocationID, CAST(CalcDate AS DATE)) AS MD
+				ON	MD.LocationID = D.LocationID
+				AND MD.MDate = D.CalcDate) D
+		  JOIN [OperationsDataMart].[Dimensions].[Facilities] F
+			ON F.Facilitykey = D.Facilitykey
+		  LEFT OUTER JOIN [TeamOptimizationEngineering].[Reporting].[ActionListHistory] ALH
+			ON LEFT(ALH.assetAPI, 8) = LEFT(D.LocationID, 8)
+			AND ALH.Person_assigned = D.Person_assigned
+			AND CAST(D.CalcDate AS DATE) = CAST(ALH.[Action Date] AS DATE)
+		WHERE F.BusinessUnit IN ('North', 'West')
 	""")
 
 	cursor.execute(SQLCommand)
@@ -73,6 +68,23 @@ def dispatch_pull():
 
 	return df.drop_duplicates()
 
+def dispatch_work(df):
+	for bu in df['BusinessUnit'].unique():
+		plt.close()
+
+		count_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
+
+		plt.bar(count_df['PriorityLevel'].values, count_df['LocationID'].values, .8,
+				color='#ff754f')
+
+		plt.title('Completed Dispatch Actions by Priority Level for {}'.format(bu))
+		plt.xlabel('Priority Level')
+		plt.ylabel('Count of Actions')
+		plt.savefig('figures/completed_dispatch_{}.png'.format(bu.lower()))
+
 
 if __name__ == '__main__':
-    df = dispatch_pull()
+	df = dispatch_pull()
+
+	dispatch_work(df.loc[df['Action Type - No count'].notnull(),
+						 ['PriorityLevel', 'LocationID', 'BusinessUnit']])

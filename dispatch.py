@@ -72,19 +72,46 @@ def dispatch_work(df):
 	for bu in df['BusinessUnit'].unique():
 		plt.close()
 
-		count_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
+		count_df = df[(df['BusinessUnit'] == bu) &
+					  (df['Action Type - No count'].notnull())]\
+					  .groupby('PriorityLevel', as_index=False).count()
+		count_df.rename(index=str, columns={'LocationID': 'Completed'}, inplace=True)
 
-		plt.bar(count_df['PriorityLevel'].values, count_df['LocationID'].values, .8,
+		total_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
+		total_df.rename(index=str, columns={'LocationID': 'Total'}, inplace=True)
+
+		plot_df = total_df.merge(count_df, on=['PriorityLevel'])
+		plot_df['perc'] = plot_df.loc[:,'Completed'] / plot_df.loc[:,'Total']
+
+		plt.bar(plot_df['PriorityLevel'].values, plot_df['perc'].values, .8,
 				color='#ff754f')
 
 		plt.title('Completed Dispatch Actions by Priority Level for {}'.format(bu))
 		plt.xlabel('Priority Level')
-		plt.ylabel('Count of Actions')
+		plt.ylabel('Percentage of Completed Dispatch Entries')
 		plt.savefig('figures/completed_dispatch_{}.png'.format(bu.lower()))
+
+def missed_dispatch(df):
+	for bu in df['BusinessUnit'].unique():
+		plt.close()
+
+		count_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
+
+		plt.bar(count_df['PriorityLevel'].values, count_df['LocationID'].values, .8,
+				color='#7a66ff')
+
+		plt.title('Incomplete Dispatch Actions by Priority Level for {}'.format(bu))
+		plt.xlabel('Priority Level')
+		plt.ylabel('Count of Actions')
+		plt.savefig('figures/missed_dispatch_{}.png'.format(bu.lower()))
 
 
 if __name__ == '__main__':
 	df = dispatch_pull()
 
-	dispatch_work(df.loc[df['Action Type - No count'].notnull(),
-						 ['PriorityLevel', 'LocationID', 'BusinessUnit']])
+	dispatch_work(df.loc[df['PriorityLevel'] != 0,
+						 ['PriorityLevel', 'LocationID', 'BusinessUnit',
+						 'Action Type - No count']])
+	# missed_dispatch(df.loc[(df['Action Type - No count'].isnull()) &
+	# 					   (df['PriorityLevel'] != 0),
+	# 					   ['PriorityLevel', 'LocationID', 'BusinessUnit']])

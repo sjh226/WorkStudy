@@ -26,6 +26,7 @@ def dispatch_pull():
 				,D.Reason
 				,D.Person_assigned
 				,ALH.[Owner Nickname]
+				,ALH.DefermentGas
 				,F.BusinessUnit
 				,D.Job_Rank
 				,ALH.[Action Type - No count]
@@ -105,13 +106,39 @@ def missed_dispatch(df):
 		plt.ylabel('Count of Actions')
 		plt.savefig('figures/missed_dispatch_{}.png'.format(bu.lower()))
 
+def dispatch_deferment(df):
+	for bu in df['BusinessUnit'].unique():
+		plt.close()
+
+		def_df = df[(df['BusinessUnit'] == bu) &
+				    (df['DefermentGas'].notnull())]\
+				   .groupby('PriorityLevel', as_index=False).mean()
+		def_df.rename(index=str, columns={'LocationID': 'Completed'}, inplace=True)
+
+		# total_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
+		# total_df.rename(index=str, columns={'LocationID': 'Total'}, inplace=True)
+		#
+		# plot_df = total_df.merge(count_df, on=['PriorityLevel'])
+		# plot_df['perc'] = plot_df.loc[:,'Completed'] / plot_df.loc[:,'Total']
+
+		plt.bar(def_df['PriorityLevel'].values, def_df['DefermentGas'].values, .8,
+				color='#ae53f4')
+
+		plt.title('Average Deferment by Priority Level for {}'.format(bu))
+		plt.xlabel('Priority Level')
+		plt.ylabel('Average Deferment from Each Priority')
+		plt.savefig('figures/dispatch_deferment_{}.png'.format(bu.lower()))
+
 
 if __name__ == '__main__':
 	df = dispatch_pull()
 
-	dispatch_work(df.loc[df['PriorityLevel'] != 0,
-						 ['PriorityLevel', 'LocationID', 'BusinessUnit',
-						 'Action Type - No count']])
+	# dispatch_work(df.loc[df['PriorityLevel'] != 0,
+	# 					 ['PriorityLevel', 'LocationID', 'BusinessUnit',
+	# 					 'Action Type - No count']])
 	# missed_dispatch(df.loc[(df['Action Type - No count'].isnull()) &
 	# 					   (df['PriorityLevel'] != 0),
 	# 					   ['PriorityLevel', 'LocationID', 'BusinessUnit']])
+	dispatch_deferment(df.loc[df['PriorityLevel'] != 0,
+							 ['PriorityLevel', 'LocationID', 'BusinessUnit',
+							 'DefermentGas']])

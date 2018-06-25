@@ -131,6 +131,7 @@ def gauge_pull():
 		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory]
 		  WHERE [Action Type - No count] = 'Gauge'
 		     OR (CommentAction LIKE '%gaug%'
+			 	AND CommentAction LIKE '%tank%'
 				AND [Action Type - No count] = 'WM Completed')
 		ORDER BY Wellkey, [Action Date]
 	""")
@@ -382,7 +383,7 @@ if __name__ == '__main__':
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
 
 	gauge_df = gauge_pull()
-	# g_df = gauge_events(gauge_df)
+	g_df = gauge_events(gauge_df)
 	gauge_counts(gauge_df[['BusinessUnit', 'Wellkey']])
 
 	# pm_dist(a_df[a_df['Comment'].notnull()])

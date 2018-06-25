@@ -131,6 +131,7 @@ def gauge_pull():
 		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory]
 		  WHERE [Action Type - No count] = 'Gauge'
 		     OR (CommentAction LIKE '%gaug%'
+			 	AND CommentAction LIKE '%tank%'
 				AND [Action Type - No count] = 'WM Completed')
 		ORDER BY Wellkey, [Action Date]
 	""")
@@ -288,15 +289,15 @@ def work_dist(df, graph_per='driver'):
 	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
 	wells = {'east': 880, 'midcon': 2853, 'north': 2003, 'west': 3834}
 
-	grouped_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).count()
+	grouped_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).sum()
 
 	for bu, axis in zip(df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
 		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :]
 
 		bu_safety = bu_df.loc[(bu_df['Action Type - No count'] == 'Safety 2.0') |
 							  (bu_df['Action Type - No count'] == 'Safety 3.0'),
-							  '_id'].sum()
-		safety_df = pd.DataFrame([['West', 'Safety', bu_safety]],
+							  'agg_dur'].sum()
+		safety_df = pd.DataFrame([[bu, 'Safety', bu_safety]],
 								 columns=bu_df.columns)
 		bu_df = bu_df.append(safety_df)
 
@@ -305,21 +306,32 @@ def work_dist(df, graph_per='driver'):
 
 		if graph_per == 'driver':
 			divisor = drivers[bu.lower()]
+			graph_title = ' per Driver'
+			scale = ''
+			graph_save = 'driver'
 		elif graph_per == 'well':
 			divisor = wells[bu.lower()]
+			graph_title = ' per Well'
+			scale = ''
+			graph_save = 'well'
+		else:
+			divisor = 100
+			graph_title = ''
+			scale = 'Hundreds of '
+			graph_save = 'total'
 		axis.bar(bu_df['Action Type - No count'].values,
-				 bu_df['_id'].values / divisor, .8,
+				 bu_df['agg_dur'].values / divisor / 60 / 60, .8,
 				 color='#00b232', label='Action Type Counts')
 		axis.set_title('{}'.format(bu))
 		axis.xaxis.set_visible(True)
 		axis.yaxis.set_visible(True)
 		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
 		axis.set_xlabel('Action')
-		axis.set_ylabel('Count of Events per {}'.format(graph_per.title()))
+		axis.set_ylabel('{}Hours Spent per Event{}'.format(scale, graph_title))
 
-	plt.suptitle('Action Counts by BU (Excliding Dispatch)', y=.995)
+	plt.suptitle('Action Hours by BU (Excliding WM, Gauge, and SF)', y=.997)
 	plt.tight_layout()
-	plt.savefig('figures/nondispatch_work_{}.png'.format(graph_per))
+	plt.savefig('figures/action_hours_{}.png'.format(graph_save))
 
 def dispatch_wm(df):
 	words = set(' '.join(list(df['CommentAction'].unique())).split())
@@ -381,9 +393,9 @@ if __name__ == '__main__':
 	# action_df.to_csv('data/comment_action.csv')
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
 
-	gauge_df = gauge_pull()
+	# gauge_df = gauge_pull()
 	# g_df = gauge_events(gauge_df)
-	gauge_counts(gauge_df[['BusinessUnit', 'Wellkey']])
+	# gauge_counts(gauge_df[['BusinessUnit', 'Wellkey']])
 
 	# pm_dist(a_df[a_df['Comment'].notnull()])
 
@@ -395,12 +407,14 @@ if __name__ == '__main__':
 	# for g_type in ['driver', 'well']:
 	# 	work_dist(work_dis_df, g_type)
 
-	# work_df = a_df.loc[(a_df['Action Type - No count'] != 'WM Completed') &
-	# 						  (a_df['Action Type - No count'] != 'Gauge') &
-	# 						  (a_df['Action Type - No count'] != 'SF'),
-	# 				   ['BusinessUnit', '_id', 'Action Type - No count']]
-	# for g_type in ['driver', 'well']:
-	# 	work_dist(work_df, g_type)
+	hour_df = pd.read_csv('data/ws_hours.csv')
+	work_df = a_df.loc[(a_df['Action Type - No count'] != 'WM Completed') &
+					   (a_df['Action Type - No count'] != 'Gauge') &
+					   (a_df['Action Type - No count'] != 'SF'),
+					  ['BusinessUnit', '_id', 'Action Type - No count']]
+	work_df = pd.merge(work_df, hour_df, left_on='_id', right_on='id')
+	for g_type in ['driver', 'all']:
+		work_dist(work_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)
 
 	# dispatch_wm(dis_df.loc[(dis_df['Action Type - No count'] == 'WM Completed') &
 	# 				   	   (dis_df['CommentAction'].notnull()), :])

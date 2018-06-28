@@ -26,6 +26,7 @@ def dispatch_pull():
 				,D.Reason
 				,D.Person_assigned
 				,ALH.[Owner Nickname]
+				,ALH._id AS id
 				,ALH.DefermentGas
 				,F.BusinessUnit
 				,D.Job_Rank
@@ -129,9 +130,35 @@ def dispatch_deferment(df):
 		plt.ylabel('Average Deferment from Each Priority')
 		plt.savefig('figures/dispatch_deferment_{}.png'.format(bu.lower()))
 
+def dispatch_hours(df):
+	for bu in df['BusinessUnit'].unique():
+		plt.close()
+
+		def_df = df[(df['BusinessUnit'] == bu) &
+				    (df['agg_dur'].notnull())]\
+				   .groupby('PriorityLevel', as_index=False).mean()
+		def_df.rename(index=str, columns={'LocationID': 'Completed'}, inplace=True)
+
+		# total_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
+		# total_df.rename(index=str, columns={'LocationID': 'Total'}, inplace=True)
+		#
+		# plot_df = total_df.merge(count_df, on=['PriorityLevel'])
+		# plot_df['perc'] = plot_df.loc[:,'Completed'] / plot_df.loc[:,'Total']
+
+		plt.bar(def_df['PriorityLevel'].values, def_df['agg_dur'].values, .8,
+				color='#ae53f4')
+
+		plt.title('Average Hours Spent by Priority Level for {}'.format(bu))
+		plt.xlabel('Priority Level')
+		plt.ylabel('Average Hours Spent for Each Priority')
+		plt.savefig('figures/dispatch_hours_{}.png'.format(bu.lower()))
+
 
 if __name__ == '__main__':
 	df = dispatch_pull()
+
+	hour_df = pd.read_csv('data/ws_hours.csv')
+	hour_dis_df = df.merge(hour_df, on='id')
 
 	# dispatch_work(df.loc[df['PriorityLevel'] != 0,
 	# 					 ['PriorityLevel', 'LocationID', 'BusinessUnit',
@@ -139,6 +166,7 @@ if __name__ == '__main__':
 	# missed_dispatch(df.loc[(df['Action Type - No count'].isnull()) &
 	# 					   (df['PriorityLevel'] != 0),
 	# 					   ['PriorityLevel', 'LocationID', 'BusinessUnit']])
-	dispatch_deferment(df.loc[df['PriorityLevel'] != 0,
-							 ['PriorityLevel', 'LocationID', 'BusinessUnit',
-							 'DefermentGas']])
+	dispatch_hours(df.loc[(hour_dis_df['PriorityLevel'] != 0) &
+						  (hour_dis_df['id'].notnull()),
+						 ['PriorityLevel', 'LocationID', 'BusinessUnit',
+						 'agg_dur']])

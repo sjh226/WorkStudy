@@ -387,6 +387,42 @@ def gauge_counts(df):
 	plt.tight_layout()
 	plt.savefig('figures/bu_gauging.png')
 
+def action_count(df):
+	plt.close()
+	fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
+
+	count_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).count()
+	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
+
+	for bu, axis in zip(df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
+		bu_df = count_df.loc[count_df['BusinessUnit'] == bu, :]
+
+		gauge = bu_df.loc[bu_df['Action Type - No count'] == 'Gauge', '_id'].values.sum()
+		wm = bu_df.loc[bu_df['Action Type - No count'] == 'WM Completed', '_id'].values.sum()
+		sf = bu_df.loc[bu_df['Action Type - No count'] == 'SF', '_id'].values.sum()
+		other = bu_df.loc[(bu_df['Action Type - No count'] != 'Gauge') &
+						  (bu_df['Action Type - No count'] != 'WM Completed') &
+						  (bu_df['Action Type - No count'] != 'SF'), '_id'].values.sum()
+
+		plot_dic = {'Gauge': gauge, 'WM': wm, 'SF': sf, 'Other': other}
+
+		axis.bar(list(plot_dic.keys()),
+				 np.array(list(plot_dic.values())) / drivers[bu.lower()],
+				 .8, align='center',
+				 color='#e5ca32', label='Action Type Counts')
+		axis.set_title('{}'.format(bu))
+		axis.xaxis.set_visible(True)
+		axis.yaxis.set_visible(True)
+		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
+		axis.set_ylabel('Count per Driver')
+
+	plt.suptitle('Action Groupings by BU', y=.997)
+	plt.tight_layout()
+	plt.savefig('figures/bu_action_dist.png')
+
+def west_site_reports(df):
+	pass
+
 
 if __name__ == '__main__':
 	# action_df = action_pull()
@@ -411,10 +447,12 @@ if __name__ == '__main__':
 	work_df = a_df.loc[(a_df['Action Type - No count'] != 'WM Completed') &
 					   (a_df['Action Type - No count'] != 'Gauge') &
 					   (a_df['Action Type - No count'] != 'SF'),
-					  ['BusinessUnit', '_id', 'Action Type - No count']]
-	work_df = pd.merge(work_df, hour_df, left_on='_id', right_on='id')
-	for g_type in ['driver', 'all']:
-		work_dist(work_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)
+					  ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
+	all_df = a_df.loc[:, ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
+	wh_df = pd.merge(all_df, hour_df, left_on='_id', right_on='id')
+	action_count(a_df)
+	# for g_type in ['driver', 'all']:
+	# 	work_dist(work_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)
 
 	# dispatch_wm(dis_df.loc[(dis_df['Action Type - No count'] == 'WM Completed') &
 	# 				   	   (dis_df['CommentAction'].notnull()), :])

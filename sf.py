@@ -36,7 +36,7 @@ def sf_dist(df, graph_per='total'):
 		axis.xaxis.set_visible(True)
 		axis.yaxis.set_visible(True)
 		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
-		axis.set_xlabel('SF Event')
+		# axis.set_xlabel('SF Event')
 		axis.set_ylabel('Hours Spent per Event{}'.format(graph_title))
 
 	plt.suptitle('SF Hours by BU', y=.997)

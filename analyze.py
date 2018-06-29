@@ -409,7 +409,7 @@ def action_count(df):
 		axis.bar(list(plot_dic.keys()),
 				 np.array(list(plot_dic.values())) / drivers[bu.lower()],
 				 .8, align='center',
-				 color='#00b232', label='Action Type Counts')
+				 color='#e5ca32', label='Action Type Counts')
 		axis.set_title('{}'.format(bu))
 		axis.xaxis.set_visible(True)
 		axis.yaxis.set_visible(True)
@@ -448,7 +448,8 @@ if __name__ == '__main__':
 					   (a_df['Action Type - No count'] != 'Gauge') &
 					   (a_df['Action Type - No count'] != 'SF'),
 					  ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
-	wh_df = pd.merge(work_df, hour_df, left_on='_id', right_on='id')
+	all_df = a_df.loc[:, ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
+	wh_df = pd.merge(all_df, hour_df, left_on='_id', right_on='id')
 	action_count(a_df)
 	# for g_type in ['driver', 'all']:
 	# 	work_dist(work_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)

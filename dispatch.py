@@ -71,6 +71,8 @@ def dispatch_pull():
 	return df.drop_duplicates()
 
 def dispatch_work(df):
+	colors = {'west': '#59b7f9', 'north': '#7759f9'}
+
 	for bu in df['BusinessUnit'].unique():
 		plt.close()
 
@@ -86,7 +88,7 @@ def dispatch_work(df):
 		plot_df['perc'] = plot_df.loc[:,'Completed'] / plot_df.loc[:,'Total']
 
 		plt.bar(plot_df['PriorityLevel'].values, plot_df['perc'].values, .8,
-				color='#ff754f')
+				color=colors[bu.lower()])
 
 		plt.title('Completed Dispatch Actions by Priority Level for {}'.format(bu))
 		plt.xlabel('Priority Level')
@@ -94,13 +96,15 @@ def dispatch_work(df):
 		plt.savefig('figures/completed_dispatch_{}.png'.format(bu.lower()))
 
 def missed_dispatch(df):
+	colors = {'west': '#59b7f9', 'north': '#7759f9'}
+
 	for bu in df['BusinessUnit'].unique():
 		plt.close()
 
 		count_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
 
 		plt.bar(count_df['PriorityLevel'].values, count_df['LocationID'].values, .8,
-				color='#7a66ff')
+				color=colors[bu.lower()])
 
 		plt.title('Incomplete Dispatch Actions by Priority Level for {}'.format(bu))
 		plt.xlabel('Priority Level')
@@ -108,6 +112,8 @@ def missed_dispatch(df):
 		plt.savefig('figures/missed_dispatch_{}.png'.format(bu.lower()))
 
 def dispatch_deferment(df):
+	colors = {'west': '#59b7f9', 'north': '#7759f9'}
+
 	for bu in df['BusinessUnit'].unique():
 		plt.close()
 
@@ -123,11 +129,11 @@ def dispatch_deferment(df):
 		# plot_df['perc'] = plot_df.loc[:,'Completed'] / plot_df.loc[:,'Total']
 
 		plt.bar(def_df['PriorityLevel'].values, def_df['DefermentGas'].values, .8,
-				color='#ae53f4')
+				color=colors[bu.lower()])
 
 		plt.title('Average Deferment by Priority Level for {}'.format(bu))
 		plt.xlabel('Priority Level')
-		plt.ylabel('Average Deferment from Each Priority')
+		plt.ylabel('Average Deferment from Each Priority (mcf)')
 		plt.savefig('figures/dispatch_deferment_{}.png'.format(bu.lower()))
 
 def dispatch_hours(df):
@@ -160,13 +166,13 @@ if __name__ == '__main__':
 	hour_df = pd.read_csv('data/ws_hours.csv')
 	hour_dis_df = df.merge(hour_df, on='id')
 
-	# dispatch_work(df.loc[df['PriorityLevel'] != 0,
-	# 					 ['PriorityLevel', 'LocationID', 'BusinessUnit',
-	# 					 'Action Type - No count']])
+	dispatch_deferment(df.loc[df['PriorityLevel'] != 0,
+						 ['PriorityLevel', 'DefermentGas', 'BusinessUnit',
+						 'Action Type - No count']])
 	# missed_dispatch(df.loc[(df['Action Type - No count'].isnull()) &
 	# 					   (df['PriorityLevel'] != 0),
 	# 					   ['PriorityLevel', 'LocationID', 'BusinessUnit']])
-	dispatch_hours(df.loc[(hour_dis_df['PriorityLevel'] != 0) &
-						  (hour_dis_df['id'].notnull()),
-						 ['PriorityLevel', 'LocationID', 'BusinessUnit',
-						 'agg_dur']])
+	# dispatch_hours(df.loc[(hour_dis_df['PriorityLevel'] != 0) &
+	# 					  (hour_dis_df['id'].notnull()),
+	# 					 ['PriorityLevel', 'LocationID', 'BusinessUnit',
+	# 					 'agg_dur']])

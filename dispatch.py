@@ -50,10 +50,10 @@ def dispatch_pull():
 		  JOIN [OperationsDataMart].[Dimensions].[Facilities] F
 			ON F.Facilitykey = D.Facilitykey
 		  LEFT OUTER JOIN [TeamOptimizationEngineering].[Reporting].[ActionListHistory] ALH
-			ON LEFT(ALH.assetAPI, 8) = LEFT(D.LocationID, 8)
-			AND ALH.Person_assigned = D.Person_assigned
+			ON LEFT(ALH.assetAPI, 10) = LEFT(D.LocationID, 10)
 			AND CAST(D.CalcDate AS DATE) = CAST(ALH.[Action Date] AS DATE)
-		WHERE F.BusinessUnit IN ('North', 'West')
+		WHERE F.BusinessUnit IN ('West')
+		AND LEN(D.Person_assigned) > 2
 	""")
 
 	cursor.execute(SQLCommand)
@@ -141,7 +141,8 @@ def dispatch_hours(df):
 		plt.close()
 
 		def_df = df[(df['BusinessUnit'] == bu) &
-				    (df['agg_dur'].notnull())]\
+				    (df['agg_dur'].notnull()) &
+					(df['DefermendGas'] > 0)]\
 				   .groupby('PriorityLevel', as_index=False).mean()
 		def_df.rename(index=str, columns={'LocationID': 'Completed'}, inplace=True)
 

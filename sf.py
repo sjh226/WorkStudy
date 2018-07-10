@@ -48,17 +48,20 @@ def sf_dist(df, graph_per='total'):
 				  (bu_df['Action Type 1'] == 'Tanks/Pits') |
 				  (bu_df['Action Type 1'] == 'Water Transfer'),
 				  'Action Type 1'] = 'Liquids'
-		# bu_df.loc[bu_df['Action Type 1'] == 'Sales Valve (PV)',
-		# 		  'Action Type 1'] = 'Salves Valve'
 		bu_df.loc[(bu_df['Action Type 1'] == 'Generator') |
 				  (bu_df['Action Type 1'] == 'Site Power'),
 				  'Action Type 1'] = 'Power System'
 		bu_df.loc[(bu_df['Action Type 1'] == 'Pumping Unit') |
 				  (bu_df['Action Type 1'] == 'Recirc Pump'),
 				  'Action Type 1'] = 'Pumping System'
-		# axis.bar(bu_df['Action Type 1'].values,
-		# 		 bu_df['agg_dur'].values / divisor / 60 / 60, .8,
-		# 		 color='#00b232', label='Action Type Counts')
+
+		bu_df = bu_df.loc[(bu_df['Action Type 1'] == 'Automation') |
+		 				  (bu_df['Action Type 1'] == 'Compressor') |
+						  (bu_df['Action Type 1'] == 'Instrumentation') |
+						  (bu_df['Action Type 1'] == 'Liquids') |
+						  (bu_df['Action Type 1'] == 'Plunger System') |
+						  (bu_df['Action Type 1'] == 'Separator') |
+						  (bu_df['Action Type 1'] == 'Wellhead'), :]
 
 		datas = []
 		labels = []
@@ -77,7 +80,7 @@ def sf_dist(df, graph_per='total'):
 
 	plt.suptitle('SF Hours by BU', y=.997)
 	plt.tight_layout()
-	plt.savefig('figures/sf_hours_{}.png'.format(graph_save))
+	plt.savefig('figures/sf_hours.png'.format(graph_save))
 
 if __name__ == '__main__':
 	# action_df = action_pull()

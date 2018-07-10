@@ -14,7 +14,7 @@ def sf_dist(df, graph_per='total'):
 	grouped_df = df.groupby(['BusinessUnit', 'Action Type 1'], as_index=False).sum()
 
 	for bu, axis in zip(df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
-		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :]
+		bu_df = df.loc[df['BusinessUnit'] == bu, :]
 
 		if graph_per == 'driver':
 			divisor = drivers[bu.lower()]
@@ -29,15 +29,51 @@ def sf_dist(df, graph_per='total'):
 			graph_title = ''
 			graph_save = 'total'
 
-		axis.bar(bu_df['Action Type 1'].values,
-				 bu_df['agg_dur'].values / divisor / 60 / 60, .8,
-				 color='#00b232', label='Action Type Counts')
+		bu_df.loc[bu_df['Action Type 1'] == 'Compressor - Gas Lift',
+				  'Action Type 1'] = 'Compressor'
+		bu_df.loc[(bu_df['Action Type 1'] == 'Gas Scrubber') |
+				  (bu_df['Action Type 1'] == 'Gas Scrubber Separator') |
+				  (bu_df['Action Type 1'] == 'Sand Separator') |
+				  (bu_df['Action Type 1'] == 'Dehy') |
+				  (bu_df['Action Type 1'] == 'Fuel Gas/Start Gas') |
+				  (bu_df['Action Type 1'] == 'Heat Medium') |
+				  (bu_df['Action Type 1'] == 'Heater Treater') |
+				  (bu_df['Action Type 1'] == 'Instrument Air') |
+				  (bu_df['Action Type 1'] == 'Sales Valve') |
+				  (bu_df['Action Type 1'] == 'Sales Valve (PV)') |
+				  (bu_df['Action Type 1'] == 'Amine') |
+				  (bu_df['Action Type 1'] == 'Separator Inlet Valve (XV)'),
+				  'Action Type 1'] = 'Separator'
+		bu_df.loc[(bu_df['Action Type 1'] == 'Tanks') |
+				  (bu_df['Action Type 1'] == 'Tanks/Pits') |
+				  (bu_df['Action Type 1'] == 'Water Transfer'),
+				  'Action Type 1'] = 'Liquids'
+		# bu_df.loc[bu_df['Action Type 1'] == 'Sales Valve (PV)',
+		# 		  'Action Type 1'] = 'Salves Valve'
+		bu_df.loc[(bu_df['Action Type 1'] == 'Generator') |
+				  (bu_df['Action Type 1'] == 'Site Power'),
+				  'Action Type 1'] = 'Power System'
+		bu_df.loc[(bu_df['Action Type 1'] == 'Pumping Unit') |
+				  (bu_df['Action Type 1'] == 'Recirc Pump'),
+				  'Action Type 1'] = 'Pumping System'
+		# axis.bar(bu_df['Action Type 1'].values,
+		# 		 bu_df['agg_dur'].values / divisor / 60 / 60, .8,
+		# 		 color='#00b232', label='Action Type Counts')
+
+		datas = []
+		labels = []
+		for act in sorted(bu_df['Action Type 1'].unique()):
+			data = bu_df.loc[bu_df['Action Type 1'] == act, 'agg_dur'].values
+			datas.append(list(data / 60 / 60))
+			labels.append(act)
+
+		axis.boxplot(datas, labels=labels)
 		axis.set_title('{}'.format(bu))
 		axis.xaxis.set_visible(True)
 		axis.yaxis.set_visible(True)
+		axis.set_ylim(top=6.25)
 		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
-		# axis.set_xlabel('SF Event')
-		axis.set_ylabel('Hours Spent per Event{}'.format(graph_title))
+		axis.set_ylabel('Hours Spent per Event'.format(graph_title))
 
 	plt.suptitle('SF Hours by BU', y=.997)
 	plt.tight_layout()
@@ -58,5 +94,5 @@ if __name__ == '__main__':
 						'Action Type - No count', 'Action Type 1',
 						'DefermentGas', 'agg_dur']]
 
-	for label in ['total', 'driver', 'well']:
+	for label in ['driver']:
 		sf_dist(sf_df[['BusinessUnit', 'Action Type 1', 'agg_dur']], label)

@@ -136,6 +136,25 @@ def gauge_pull():
 		ORDER BY Wellkey, [Action Date]
 	""")
 
+	# DROP TABLE IF EXISTS #tmp;
+	#
+	# SELECT [_id],
+	#       [TankCode],
+	#       [gaugeDate],
+	#       [liquidAmount],
+	#       ROW_NUMBER() OVER(PARTITION BY [tankcode] ORDER BY [gaugedate] DESC) AS [rk]
+	# INTO [#TMP]
+	# FROM   EDW.Enbase.GaugeData AS GD
+	# WHERE  [liquidAmount] IS NOT NULL;
+	#
+	# DROP TABLE IF EXISTS #CarryOverIds;
+	#
+	# SELECT [t1].[_id]
+	# INTO [#CarryOverIds]
+	# FROM   #TMP AS T
+	#       INNER JOIN #TMP AS T1 ON T1.RK = T.Rk - 1
+	#                           AND T.tankCode = T1.tankCode;
+
 	cursor.execute(SQLCommand)
 	results = cursor.fetchall()
 
@@ -282,27 +301,72 @@ def gauge_table_plot(df):
 	plt.title('Comparison of WM Entires to Those with Matched Events', y=.8)
 	plt.savefig('figures/gauge_table.png')
 
+def site_report(df, graph_per='driver'):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+	colors = {'east': '#22b517', 'midcon': '#2582c4',
+			  'north': '#601299', 'west': '#e20b0b'}
+
+	grouped_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).mean()
+	grouped_df.sort_values(['BusinessUnit', 'Action Type - No count'], inplace=True)
+
+	i = 0
+	index = np.arange(len(events))
+	width = .225
+
+	for bu in df['BusinessUnit'].unique():
+		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :].sort_values('Action Type - No count')
+
+		ax.bar(index + (width * i),
+			   bu_df['agg_dur'].values / divisor / 60 / 60, width,
+			   color=colors[bu.lower()], label=bu)
+		ax.set_xticks(index + width / 2)
+		ax.set_xticklabels(events)
+		i += 1
+
+	plt.title('Action Hours by BU (Excliding WM, Gauge, and SF)')
+	plt.xlabel('Action')
+	plt.ylabel('{}Hours Spent per Event{}'.format(scale, graph_title))
+	plt.xticks(rotation='vertical')
+	plt.legend()
+	plt.tight_layout()
+	plt.savefig('figures/action_hours_{}.png'.format(graph_save))
+
 def work_dist(df, graph_per='driver'):
 	plt.close()
-	fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
+	# fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
 
 	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
 	wells = {'east': 880, 'midcon': 2853, 'north': 2003, 'west': 3834}
+	colors = {'east': '#22b517', 'midcon': '#2582c4',
+			  'north': '#601299', 'west': '#e20b0b'}
+
+	df.loc[(df['Action Type - No count'] == 'Safety 2.0') |
+		   (df['Action Type - No count'] == 'Safety 3.0'),
+		   'Action Type - No count'] = 'Safety'
 
 	grouped_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).sum()
+	for bu in grouped_df['BusinessUnit'].unique():
+		for event in grouped_df['Action Type - No count'].unique():
+			if event not in grouped_df.loc[grouped_df['BusinessUnit'] == bu,
+										   'Action Type - No count'].unique():
+				grouped_df = grouped_df.append(pd.DataFrame([[bu, event, 0]],
+											   columns = ['BusinessUnit',
+											   			  'Action Type - No count',
+														  'agg_dur']),
+											   ignore_index=True)
+	grouped_df.sort_values(['BusinessUnit', 'Action Type - No count'], inplace=True)
 
-	for bu, axis in zip(df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
-		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :]
+	events = sorted(df['Action Type - No count'].unique())
 
-		bu_safety = bu_df.loc[(bu_df['Action Type - No count'] == 'Safety 2.0') |
-							  (bu_df['Action Type - No count'] == 'Safety 3.0'),
-							  'agg_dur'].sum()
-		safety_df = pd.DataFrame([[bu, 'Safety', bu_safety]],
-								 columns=bu_df.columns)
-		bu_df = bu_df.append(safety_df)
+	i = 0
+	index = np.arange(len(events))
+	width = .225
 
-		bu_df = bu_df.loc[(bu_df['Action Type - No count'] != 'Safety 2.0') &
-						  (bu_df['Action Type - No count'] != 'Safety 3.0'), :]
+	for bu in df['BusinessUnit'].unique():
+		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :].sort_values('Action Type - No count')
 
 		if graph_per == 'driver':
 			divisor = drivers[bu.lower()]
@@ -319,17 +383,19 @@ def work_dist(df, graph_per='driver'):
 			graph_title = ''
 			scale = 'Hundreds of '
 			graph_save = 'total'
-		axis.bar(bu_df['Action Type - No count'].values,
-				 bu_df['agg_dur'].values / divisor / 60 / 60, .8,
-				 color='#00b232', label='Action Type Counts')
-		axis.set_title('{}'.format(bu))
-		axis.xaxis.set_visible(True)
-		axis.yaxis.set_visible(True)
-		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
-		axis.set_xlabel('Action')
-		axis.set_ylabel('{}Hours Spent per Event{}'.format(scale, graph_title))
 
-	plt.suptitle('Action Hours by BU (Excliding WM, Gauge, and SF)', y=.997)
+		ax.bar(index + (width * i),
+			   bu_df['agg_dur'].values / divisor / 60 / 60, width,
+			   color=colors[bu.lower()], label=bu)
+		ax.set_xticks(index + width / 2)
+		ax.set_xticklabels(events)
+		i += 1
+
+	plt.title('Action Hours by BU (Excliding WM, Gauge, and SF)')
+	plt.xlabel('Action')
+	plt.ylabel('{}Hours Spent per Event{}'.format(scale, graph_title))
+	plt.xticks(rotation='vertical')
+	plt.legend()
 	plt.tight_layout()
 	plt.savefig('figures/action_hours_{}.png'.format(graph_save))
 
@@ -449,10 +515,10 @@ if __name__ == '__main__':
 					   (a_df['Action Type - No count'] != 'SF'),
 					  ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
 	all_df = a_df.loc[:, ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
-	wh_df = pd.merge(all_df, hour_df, left_on='_id', right_on='id')
+	wh_df = pd.merge(work_df, hour_df, left_on='_id', right_on='id')
 	action_count(a_df)
-	# for g_type in ['driver', 'all']:
-	# 	work_dist(work_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)
+	for g_type in ['driver', 'all']:
+		work_dist(wh_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)
 
 	# dispatch_wm(dis_df.loc[(dis_df['Action Type - No count'] == 'WM Completed') &
 	# 				   	   (dis_df['CommentAction'].notnull()), :])

@@ -18,10 +18,40 @@ def action_pull():
 
 	cursor = connection.cursor()
 	SQLCommand = ("""
+		DROP TABLE IF EXISTS #tmp;
+
+		SELECT	[_id],
+				[TankCode],
+				[gaugeDate],
+				[liquidAmount],
+		      	ROW_NUMBER() OVER(PARTITION BY [tankcode] ORDER BY [gaugedate] DESC) AS [rk]
+		INTO 	[#TMP]
+		FROM    EDW.Enbase.GaugeData AS GD
+		WHERE   [liquidAmount] IS NOT NULL;
+	""")
+
+	cursor.execute(SQLCommand)
+
+	SQLCommand = ("""
+		DROP TABLE IF EXISTS #CarryOverIds;
+
+		SELECT 	[t1].[_id]
+		  INTO 	[#CarryOverIds]
+		  FROM  #TMP AS T
+		INNER JOIN #TMP AS T1
+				ON T1.RK = T.Rk - 1
+		       AND T.tankCode = T1.tankCode;
+	""")
+
+	cursor.execute(SQLCommand)
+
+	SQLCommand = ("""
 		SELECT	*
 		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] AL
 		WHERE [Action Date] >= '2017-03-30'
 		  AND [Action Date] <= '2018-04-12'
+		  AND _id NOT IN (SELECT *
+		  					FROM #CarryOverIds)
 	""")
 
 	cursor.execute(SQLCommand)
@@ -122,6 +152,35 @@ def gauge_pull():
 		sys.exit()
 
 	cursor = connection.cursor()
+
+	SQLCommand = ("""
+		DROP TABLE IF EXISTS #tmp;
+
+		SELECT	[_id],
+				[TankCode],
+				[gaugeDate],
+				[liquidAmount],
+		      	ROW_NUMBER() OVER(PARTITION BY [tankcode] ORDER BY [gaugedate] DESC) AS [rk]
+		INTO 	[#TMP]
+		FROM    EDW.Enbase.GaugeData AS GD
+		WHERE   [liquidAmount] IS NOT NULL;
+	""")
+
+	cursor.execute(SQLCommand)
+
+	SQLCommand = ("""
+		DROP TABLE IF EXISTS #CarryOverIds;
+
+		SELECT 	[t1].[_id]
+		  INTO 	[#CarryOverIds]
+		  FROM  #TMP AS T
+		INNER JOIN #TMP AS T1
+				ON T1.RK = T.Rk - 1
+		       AND T.tankCode = T1.tankCode;
+	""")
+
+	cursor.execute(SQLCommand)
+
 	SQLCommand = ("""
 		SELECT	Wellkey
 				,BusinessUnit
@@ -130,32 +189,18 @@ def gauge_pull():
 				,[Action Type - No count]
 				,Comment
 				,CommentAction
-		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory]
+		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] ALH
 		  WHERE [Action Type - No count] = 'Gauge'
 		     OR (CommentAction LIKE '%gaug%'
 			 	AND CommentAction LIKE '%tank%'
 				AND [Action Type - No count] = 'WM Completed')
+			 AND ALH._id NOT IN (SELECT *
+			 					   FROM #CarryOverIds)
+			 AND [Action Date] < '2018-05-01'
+			 AND createdby NOT LIKE '%ibex%'
+			 AND createdby NOT LIKE '%readyoil%'
 		ORDER BY Wellkey, [Action Date]
 	""")
-
-	# DROP TABLE IF EXISTS #tmp;
-	#
-	# SELECT [_id],
-	#       [TankCode],
-	#       [gaugeDate],
-	#       [liquidAmount],
-	#       ROW_NUMBER() OVER(PARTITION BY [tankcode] ORDER BY [gaugedate] DESC) AS [rk]
-	# INTO [#TMP]
-	# FROM   EDW.Enbase.GaugeData AS GD
-	# WHERE  [liquidAmount] IS NOT NULL;
-	#
-	# DROP TABLE IF EXISTS #CarryOverIds;
-	#
-	# SELECT [t1].[_id]
-	# INTO [#CarryOverIds]
-	# FROM   #TMP AS T
-	#       INNER JOIN #TMP AS T1 ON T1.RK = T.Rk - 1
-	#                           AND T.tankCode = T1.tankCode;
 
 	cursor.execute(SQLCommand)
 	results = cursor.fetchall()
@@ -489,9 +534,9 @@ if __name__ == '__main__':
 	# action_df.to_csv('data/comment_action.csv')
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
 
-	# gauge_df = gauge_pull()
-	# g_df = gauge_events(gauge_df)
-	# gauge_counts(gauge_df[['BusinessUnit', 'Wellkey']])
+	gauge_df = gauge_pull()
+	g_df = gauge_events(gauge_df)
+	gauge_counts(gauge_df[['BusinessUnit', 'Wellkey']])
 
 	# pm_dist(a_df[a_df['Comment'].notnull()])
 
@@ -503,14 +548,14 @@ if __name__ == '__main__':
 	# for g_type in ['driver', 'well']:
 	# 	work_dist(work_dis_df, g_type)
 
-	hour_df = pd.read_csv('data/ws_hours.csv')
-	work_df = a_df.loc[(a_df['Action Type - No count'] != 'WM Completed') &
-					   (a_df['Action Type - No count'] != 'Gauge') &
-					   (a_df['Action Type - No count'] != 'SF'),
-					  ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
-	all_df = a_df.loc[:, ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
-	wh_df = pd.merge(work_df, hour_df, left_on='_id', right_on='id')
-	site_report(wh_df[wh_df['Action Type - No count'] == 'Site Report'])
+	# hour_df = pd.read_csv('data/ws_hours.csv')
+	# work_df = a_df.loc[(a_df['Action Type - No count'] != 'WM Completed') &
+	# 				   (a_df['Action Type - No count'] != 'Gauge') &
+	# 				   (a_df['Action Type - No count'] != 'SF'),
+	# 				  ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
+	# all_df = a_df.loc[:, ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
+	# wh_df = pd.merge(work_df, hour_df, left_on='_id', right_on='id')
+	# site_report(wh_df[wh_df['Action Type - No count'] == 'Site Report'])
 
 	# action_count(a_df)
 	# for g_type in ['driver', 'all']:

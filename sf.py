@@ -12,6 +12,7 @@ def sf_dist(df, graph_per='total'):
 	wells = {'east': 880, 'midcon': 2853, 'north': 2003, 'west': 3834}
 
 	grouped_df = df.groupby(['BusinessUnit', 'Action Type 1'], as_index=False).sum()
+	return_df = pd.DataFrame(columns=grouped_df.columns)
 
 	for bu, axis in zip(df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
 		bu_df = df.loc[df['BusinessUnit'] == bu, :]
@@ -62,6 +63,7 @@ def sf_dist(df, graph_per='total'):
 						  (bu_df['Action Type 1'] == 'Plunger System') |
 						  (bu_df['Action Type 1'] == 'Separator') |
 						  (bu_df['Action Type 1'] == 'Wellhead'), :]
+		return_df = return_df.append(bu_df)
 
 		datas = []
 		labels = []
@@ -82,6 +84,9 @@ def sf_dist(df, graph_per='total'):
 	plt.tight_layout()
 	plt.savefig('figures/sf_hours.png'.format(graph_save))
 
+	return return_df.groupby(['BusinessUnit', 'Action Type 1'], as_index=False).mean()
+
+
 if __name__ == '__main__':
 	# action_df = action_pull()
 	# action_df.to_csv('data/comment_action.csv')
@@ -98,4 +103,4 @@ if __name__ == '__main__':
 						'DefermentGas', 'agg_dur']]
 
 	for label in ['driver']:
-		sf_dist(sf_df[['BusinessUnit', 'Action Type 1', 'agg_dur']], label)
+		sff_df = sf_dist(sf_df[['BusinessUnit', 'Action Type 1', 'agg_dur']], label)

@@ -20,6 +20,8 @@ def action_pull():
 	SQLCommand = ("""
 		SELECT	*
 		  FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] AL
+		WHERE [Action Date] >= '2017-03-30'
+		  AND [Action Date] <= '2018-04-12'
 	""")
 
 	cursor.execute(SQLCommand)
@@ -303,35 +305,30 @@ def gauge_table_plot(df):
 
 def site_report(df, graph_per='driver'):
 	plt.close()
-	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+	fig, ax = plt.subplots(1, 1, figsize=(4, 4))
 
 	colors = {'east': '#22b517', 'midcon': '#2582c4',
 			  'north': '#601299', 'west': '#e20b0b'}
 
 	grouped_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).mean()
-	grouped_df.sort_values(['BusinessUnit', 'Action Type - No count'], inplace=True)
 
+	width = 0.25
 	i = 0
-	index = np.arange(len(events))
-	width = .225
-
 	for bu in df['BusinessUnit'].unique():
-		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :].sort_values('Action Type - No count')
+		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :]
 
-		ax.bar(index + (width * i),
-			   bu_df['agg_dur'].values / divisor / 60 / 60, width,
+		ax.bar(1 + (width * i),
+			   bu_df['agg_dur'].values / 60, width,
 			   color=colors[bu.lower()], label=bu)
-		ax.set_xticks(index + width / 2)
-		ax.set_xticklabels(events)
 		i += 1
 
-	plt.title('Action Hours by BU (Excliding WM, Gauge, and SF)')
-	plt.xlabel('Action')
-	plt.ylabel('{}Hours Spent per Event{}'.format(scale, graph_title))
-	plt.xticks(rotation='vertical')
+	plt.title('Time Spent on Site Reports')
+	plt.xlabel('Business Unit')
+	plt.ylabel('Average Minutes Spent')
+	plt.tick_params(axis='x', which='both', bottom=False, top=False, labelbottom=False)
 	plt.legend()
 	plt.tight_layout()
-	plt.savefig('figures/action_hours_{}.png'.format(graph_save))
+	plt.savefig('figures/site_report.png')
 
 def work_dist(df, graph_per='driver'):
 	plt.close()
@@ -486,9 +483,6 @@ def action_count(df):
 	plt.tight_layout()
 	plt.savefig('figures/bu_action_dist.png')
 
-def west_site_reports(df):
-	pass
-
 
 if __name__ == '__main__':
 	# action_df = action_pull()
@@ -516,9 +510,11 @@ if __name__ == '__main__':
 					  ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
 	all_df = a_df.loc[:, ['BusinessUnit', '_id', 'Action Type - No count', 'Action Date']]
 	wh_df = pd.merge(work_df, hour_df, left_on='_id', right_on='id')
-	action_count(a_df)
-	for g_type in ['driver', 'all']:
-		work_dist(wh_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)
+	site_report(wh_df[wh_df['Action Type - No count'] == 'Site Report'])
+
+	# action_count(a_df)
+	# for g_type in ['driver', 'all']:
+	# 	work_dist(wh_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)
 
 	# dispatch_wm(dis_df.loc[(dis_df['Action Type - No count'] == 'WM Completed') &
 	# 				   	   (dis_df['CommentAction'].notnull()), :])

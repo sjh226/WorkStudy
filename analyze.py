@@ -3,6 +3,7 @@ import numpy as np
 import pyodbc
 import sys
 import matplotlib.pyplot as plt
+from matplotlib import pylab
 
 
 def action_pull():
@@ -544,8 +545,7 @@ def stacked_actions(df):
 	df.loc[(df['Action Type - No count'] == 'soapSticks'),
 		   'Action Type - No count'] = 'Soap Sticks'
 
-	# count_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).count()
-	# drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
+	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
 
 	df['Action Date'] = pd.to_datetime(df['Action Date'])
 	df['Action Date'] = df['Action Date'].map(lambda x:100*x.year + x.month)
@@ -566,55 +566,47 @@ def stacked_actions(df):
 							  ['WM', 'Gauge', 'Site Report', 'SF',
 							   'Safety', 'Plunger', 'Vent', 'Soap Sticks'])), :]
 
-		# gauge = bu_df.loc[bu_df['Action Type - No count'] == 'Gauge', '_id'].values.sum()
-		# wm = bu_df.loc[bu_df['Action Type - No count'] == 'WM Completed', '_id'].values.sum()
-		# sf = bu_df.loc[bu_df['Action Type - No count'] == 'SF', '_id'].values.sum()
-		# other = bu_df.loc[(bu_df['Action Type - No count'] != 'Gauge') &
-		# 				  (bu_df['Action Type - No count'] != 'WM Completed') &
-		# 				  (bu_df['Action Type - No count'] != 'SF'), '_id'].values.sum()
-		#
-		# plot_dic = {'Gauge': gauge, 'WM': wm, 'SF': sf, 'Other': other}
+		colors = ['#15af27', '#0eb29f', '#0109a0', '#853cb2', '#ddd718',
+				  '#dd0ef4', '#db1c1c', '#0fdbff']
 
-		colors = ['#51b57e', '#e20b0b', '#51b57e', '#51b57e', '#51b57e',
-				  '#51b57e', '#e20b0b', '#51b57e']
+		plot_x = {month: i for i, month in enumerate(sorted(month_vals))}
 
-		bottoms = np.zeros(8)
+		bottoms = np.zeros(14)
 		for i, action in enumerate(['WM', 'Gauge', 'Site Report', 'SF',
 									'Safety', 'Plunger', 'Vent', 'Soap Sticks']):
 			for month in month_vals:
-				if month not in bu_df['Action Date'].unique():
-					bu_df = bu_df.append([[bu, action, month, 0]],
+				if month not in bu_df.loc[bu_df['Action Type - No count'] == action,
+										  'Action Date'].unique():
+					bu_df = bu_df.append(pd.DataFrame([[bu, action, month, 0]],
 										 columns=['BusniessUnit',
 										 		  'Action Type - No count',
 												  'Action Date',
-												  'Wellkey'])
+												  'Wellkey']))
 
 			plot_vals = bu_df.loc[bu_df['Action Type - No count'] == action,
 								  'Wellkey'].values
+			axis.bar(list(plot_x.values()),
+					 plot_vals / drivers[bu.lower()],
+					 .8, bottom=bottoms, color=colors[i],
+					 label=action)
+			axis.set_xticks(list(plot_x.values()))
+			axis.set_xticklabels(months)
+			bottoms += (plot_vals / drivers[bu.lower()])
 
-			print(plot_vals)
-			print(month_vals)
-			axis.bar(month_vals,
-					 plot_vals,
-					 .8, bottom=bottoms, color=colors[i])
-			plt.xticks(range(month_df.shape[0]), months)
-			bottoms += plot_vals
-		# axis.bar(np.arange(8),
-		# 		 bu_df['Action Type - No count'])
-
-		axis.bar(list(plot_dic.keys()),
-				 np.array(list(plot_dic.values())) / drivers[bu.lower()],
-				 .8, align='center',
-				 color='#e5ca32', label='Action Type Counts')
 		axis.set_title('{}'.format(bu))
-		axis.xaxis.set_visible(True)
-		axis.yaxis.set_visible(True)
+		axis.set_ylim(0, max(bottoms) + 10)
 		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
 		axis.set_ylabel('Count per Driver')
 
-	plt.suptitle('Action Groupings by BU', y=.997)
+	plt.suptitle('Action Counts by BU over Time', y=.997)
+	art = []
+	lgd = pylab.legend(loc=9, bbox_to_anchor=(-0.1, -0.2), ncol=4)
+	art.append(lgd)
+	# plt.legend()
 	plt.tight_layout()
-	plt.savefig('figures/count_time.png')
+	pylab.savefig('figures/count_time.png',
+				  additional_artists=art,
+				  bbox_inches='tight')
 
 
 if __name__ == '__main__':

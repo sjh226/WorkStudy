@@ -52,7 +52,7 @@ def dispatch_pull():
 		  LEFT OUTER JOIN [TeamOptimizationEngineering].[Reporting].[ActionListHistory] ALH
 			ON LEFT(ALH.assetAPI, 10) = LEFT(D.LocationID, 10)
 			AND CAST(D.CalcDate AS DATE) = CAST(ALH.[Action Date] AS DATE)
-		WHERE F.BusinessUnit IN ('West')
+		WHERE F.BusinessUnit IN ('West', 'North')
 		AND LEN(D.Person_assigned) > 2
 	""")
 
@@ -100,16 +100,39 @@ def missed_dispatch(df):
 
 	for bu in df['BusinessUnit'].unique():
 		plt.close()
+		fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6), sharey=True)
 
-		count_df = df[df['BusinessUnit'] == bu].groupby('PriorityLevel', as_index=False).count()
+		bu_df = df.loc[df['BusinessUnit'] == bu]
+		bu_df.loc[bu_df['Action Type - No count'].isnull(),
+				  'Action Type - No count'] = 'Not Completed'
 
-		plt.bar(count_df['PriorityLevel'].values, count_df['LocationID'].values, .8,
-				color=colors[bu.lower()])
+		dispatch_df = bu_df.groupby(['BusinessUnit', 'Action Type - No count'],
+									as_index=False).count()
+		completed_df = bu_df.loc[bu_df['id'].notnull(), :]\
+					   .groupby(['BusinessUnit', 'Action Type - No count'],
+								 as_index=False).count()
 
-		plt.title('Incomplete Dispatch Actions by Priority Level for {}'.format(bu))
-		plt.xlabel('Priority Level')
-		plt.ylabel('Count of Actions')
-		plt.savefig('figures/missed_dispatch_{}.png'.format(bu.lower()))
+		dispatch_df.sort_values('Action Type - No count', inplace=True)
+		completed_df.sort_values('Action Type - No count', inplace=True)
+
+		ax1.barh(np.arange(len(bu_df['Action Type - No count'].unique())),
+				 dispatch_df['PriorityLevel'].values, .8,
+				 color=colors[bu.lower()])
+
+		ax2.barh(np.arange(len(completed_df['Action Type - No count'].unique())),
+				 completed_df['PriorityLevel'].values, .8,
+				 color=colors[bu.lower()])
+
+		ax1.set_yticks(np.arange(len(bu_df['Action Type - No count'].unique())))
+		ax1.set_yticklabels(sorted(list(bu_df['Action Type - No count'].unique())))
+
+		ax1.set_title('Total Actions Dispatched')
+		ax2.set_title('Completed Dispatch Actions')
+		ax1.set_xlabel('Count of Action')
+		ax2.set_xlabel('Count of Action')
+
+		plt.suptitle('Total and Completed Dispatch Events for {}'.format(bu))
+		plt.savefig('figures/dispatch_review_{}.png'.format(bu.lower()))
 
 def dispatch_deferment(df):
 	colors = {'west': '#59b7f9', 'north': '#7759f9'}
@@ -167,9 +190,12 @@ if __name__ == '__main__':
 	hour_df = pd.read_csv('data/ws_hours.csv')
 	hour_dis_df = df.merge(hour_df, on='id')
 
-	dispatch_deferment(df.loc[df['PriorityLevel'] != 0,
-						 ['PriorityLevel', 'DefermentGas', 'BusinessUnit',
-						 'Action Type - No count']])
+	missed_dispatch(df[['BusinessUnit', 'PriorityLevel',
+						'id', 'Action Type - No count']])
+
+	# dispatch_deferment(df.loc[df['PriorityLevel'] != 0,
+	# 					 ['PriorityLevel', 'DefermentGas', 'BusinessUnit',
+	# 					 'Action Type - No count']])
 	# missed_dispatch(df.loc[(df['Action Type - No count'].isnull()) &
 	# 					   (df['PriorityLevel'] != 0),
 	# 					   ['PriorityLevel', 'LocationID', 'BusinessUnit']])

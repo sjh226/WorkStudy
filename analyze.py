@@ -529,9 +529,10 @@ def action_count(df):
 	plt.tight_layout()
 	plt.savefig('figures/bu_action_dist.png')
 
-def stacked_actions(df):
+def stacked_actions(df_true, plot_type='count'):
 	plt.close()
 	fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(10, 10))
+	df = df_true.copy()
 
 	df.loc[(df['Action Type - No count'] == 'Safety 2.0') |
 		   (df['Action Type - No count'] == 'Safety 3.0'),
@@ -549,11 +550,19 @@ def stacked_actions(df):
 
 	df['Action Date'] = pd.to_datetime(df['Action Date'])
 	df['Action Date'] = df['Action Date'].map(lambda x:100*x.year + x.month)
-	df = df.loc[:, ['BusinessUnit', 'Action Type - No count',
-					'Action Date', 'Wellkey']]
 
-	group_df = df.groupby(['BusinessUnit', 'Action Type - No count',
-							 'Action Date'], as_index=False).count()
+	if plot_type == 'count':
+		df = df.loc[:, ['BusinessUnit', 'Action Type - No count',
+						'Action Date', 'Wellkey']]
+		group_df = df.groupby(['BusinessUnit', 'Action Type - No count',
+								 'Action Date'], as_index=False).count()
+	elif plot_type == 'hours':
+		df = df.loc[:, ['BusinessUnit', 'Action Type - No count',
+						'Action Date', 'agg_dur']]
+		group_df = df.groupby(['BusinessUnit', 'Action Type - No count',
+								 'Action Date'], as_index=False).sum()
+		group_df.rename(index=str, columns={'agg_dur': 'Wellkey'}, inplace=True)
+
 	months = ['Jan 2017', 'Feb 2017', 'Mar 2017', 'Apr 2017', 'May 2017', 'Jun 2017', \
 			  'Jul 2017', 'Aug 2017', 'Sep 2017', 'Oct 2017', 'Nov 2017', 'Dec 2017', \
 			  'Jan 2018', 'Feb 2018', 'Mar 2018', 'Apr 2018', 'May 2018']
@@ -585,26 +594,32 @@ def stacked_actions(df):
 
 			plot_vals = bu_df.loc[bu_df['Action Type - No count'] == action,
 								  'Wellkey'].values
+			if plot_type == 'count':
+				divisor = drivers[bu.lower()]
+				height = 10
+			elif plot_type == 'hours':
+				divisor = (drivers[bu.lower()] * 60 * 60)
+				height = 2
+				
 			axis.bar(list(plot_x.values()),
-					 plot_vals / drivers[bu.lower()],
+					 plot_vals / divisor,
 					 .8, bottom=bottoms, color=colors[i],
 					 label=action)
 			axis.set_xticks(list(plot_x.values()))
 			axis.set_xticklabels(months)
-			bottoms += (plot_vals / drivers[bu.lower()])
+			bottoms += (plot_vals / divisor)
 
 		axis.set_title('{}'.format(bu))
-		axis.set_ylim(0, max(bottoms) + 10)
+		axis.set_ylim(0, max(bottoms) + height)
 		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
-		axis.set_ylabel('Count per Driver')
+		axis.set_ylabel('{} per Driver'.format(plot_type.title()))
 
-	plt.suptitle('Action Counts by BU over Time', y=.997)
+	plt.suptitle('Action {} by BU over Time'.format(plot_type.title()), y=.997)
 	art = []
 	lgd = pylab.legend(loc=9, bbox_to_anchor=(-0.1, -0.2), ncol=4)
 	art.append(lgd)
-	# plt.legend()
 	plt.tight_layout()
-	pylab.savefig('figures/count_time.png',
+	pylab.savefig('figures/action_dist_{}.png'.format(plot_type),
 				  additional_artists=art,
 				  bbox_inches='tight')
 
@@ -613,7 +628,10 @@ if __name__ == '__main__':
 	# action_df = action_pull()
 	# action_df.to_csv('data/comment_action.csv')
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
-	stacked_actions(a_df)
+	stacked_actions(a_df, plot_type='count')
+	hour_df = pd.read_csv('data/ws_hours.csv')
+	wh_df = pd.merge(a_df, hour_df, left_on='_id', right_on='id')
+	stacked_actions(wh_df, plot_type='hours')
 
 	# gauge_df = gauge_pull()
 	# g_df = gauge_events(gauge_df)

@@ -563,7 +563,7 @@ def stacked_actions(df_true, plot_type='count'):
 								 'Action Date'], as_index=False).sum()
 		group_df.rename(index=str, columns={'agg_dur': 'Wellkey'}, inplace=True)
 
-	months = ['Jan 2017', 'Feb 2017', 'Mar 2017', 'Apr 2017', 'May 2017', 'Jun 2017', \
+	months = ['Mar 2017', 'Apr 2017', 'May 2017', 'Jun 2017', \
 			  'Jul 2017', 'Aug 2017', 'Sep 2017', 'Oct 2017', 'Nov 2017', 'Dec 2017', \
 			  'Jan 2018', 'Feb 2018', 'Mar 2018', 'Apr 2018', 'May 2018']
 
@@ -575,7 +575,7 @@ def stacked_actions(df_true, plot_type='count'):
 							  ['WM', 'Gauge', 'Site Report', 'SF',
 							   'Safety', 'Plunger', 'Vent', 'Soap Sticks'])), :]
 
-		colors = ['#15af27', '#0eb29f', '#0109a0', '#853cb2', '#ddd718',
+		colors = ['#09590d', '#0eb29f', '#0109a0', '#853cb2', '#ddd718',
 				  '#dd0ef4', '#db1c1c', '#0fdbff']
 
 		plot_x = {month: i for i, month in enumerate(sorted(month_vals))}
@@ -587,20 +587,20 @@ def stacked_actions(df_true, plot_type='count'):
 				if month not in bu_df.loc[bu_df['Action Type - No count'] == action,
 										  'Action Date'].unique():
 					bu_df = bu_df.append(pd.DataFrame([[bu, action, month, 0]],
-										 columns=['BusniessUnit',
+										 columns=['BusinessUnit',
 										 		  'Action Type - No count',
 												  'Action Date',
 												  'Wellkey']))
-
+			bu_df.sort_values(['Action Type - No count', 'Action Date'], inplace=True)
 			plot_vals = bu_df.loc[bu_df['Action Type - No count'] == action,
 								  'Wellkey'].values
 			if plot_type == 'count':
 				divisor = drivers[bu.lower()]
-				height = 10
+				height = 50
 			elif plot_type == 'hours':
 				divisor = (drivers[bu.lower()] * 60 * 60)
-				height = 2
-				
+				height = 20
+
 			axis.bar(list(plot_x.values()),
 					 plot_vals / divisor,
 					 .8, bottom=bottoms, color=colors[i],
@@ -610,7 +610,8 @@ def stacked_actions(df_true, plot_type='count'):
 			bottoms += (plot_vals / divisor)
 
 		axis.set_title('{}'.format(bu))
-		axis.set_ylim(0, max(bottoms) + height)
+		axis.set_ylim(0, height)
+		# axis.set_ylim(0, max(bottoms) + height)
 		plt.setp(axis.xaxis.get_majorticklabels(), rotation=90)
 		axis.set_ylabel('{} per Driver'.format(plot_type.title()))
 
@@ -623,15 +624,79 @@ def stacked_actions(df_true, plot_type='count'):
 				  additional_artists=art,
 				  bbox_inches='tight')
 
+def safety_plot(df_true):
+	df = df_true.copy()
+
+	plt.close()
+	fig, ax1 = plt.subplots(1, 1, figsize=(6, 6))
+	# ax2 = ax1.twinx()
+
+	df['Action Date'] = pd.to_datetime(df['Action Date'])
+	df['Action Date'] = df['Action Date'].map(lambda x:100*x.year + x.month)
+
+	df.loc[(df['Action Type - No count'] == 'Safety 2.0') |
+		   (df['Action Type - No count'] == 'Safety 3.0'),
+		   'Action Type - No count'] = 'Safety'
+	month_vals = df['Action Date'].unique()
+
+	df = df.loc[df['Action Type - No count'] == 'Safety',
+				['BusinessUnit', 'Action Type - No count', 'Action Date', 'agg_dur']]
+
+	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
+
+	driver_df = pd.DataFrame(columns=df.columns)
+	for bu in df['BusinessUnit'].unique():
+		bu_df = df.loc[df['BusinessUnit'] == bu, :]
+		bu_df.loc[:, 'agg_dur'] = bu_df.loc[:, 'agg_dur'] / drivers[bu.lower()]
+		driver_df = driver_df.append(bu_df)
+
+	months = ['March 2017', 'Apr 2017', 'May 2017', 'Jun 2017', \
+			  'Jul 2017', 'Aug 2017', 'Sep 2017', 'Oct 2017', 'Nov 2017', 'Dec 2017', \
+			  'Jan 2018', 'Feb 2018', 'Mar 2018', 'Apr 2018']
+
+	plot_x = {month: i for i, month in enumerate(sorted(month_vals))}
+
+	driver_df.drop('BusinessUnit', axis=1, inplace=True)
+
+	for month in month_vals:
+		if month not in driver_df['Action Date'].unique():
+			driver_df = driver_df.append(pd.DataFrame([['Safety', month, 0]],
+										 columns=['Action Type - No count', 'Action Date', 'agg_dur']))
+
+	count_df = driver_df.groupby(['Action Type - No count',
+						   		  'Action Date'], as_index=False).count()
+	count_df.sort_values('Action Date', inplace=True)
+
+	hours_df = driver_df.groupby(['Action Type - No count',
+						   		  'Action Date'], as_index=False).sum()
+	hours_df.sort_values('Action Date', inplace=True)
+
+	ax1.plot(list(plot_x.values()), count_df['agg_dur'], .8, 'o-',
+			 color='#359333')
+	# ax2.plot(list(plot_x.values()), hours_df['agg_dur'], .8, 'o-',
+	# 		 color='#15af27')
+
+	ax1.set_xticks(list(plot_x.values()))
+	ax1.set_xticklabels(months)
+	ax1.set_ylabel('Count of Reports per Driver')
+	plt.setp(ax1.xaxis.get_majorticklabels(), rotation=90)
+	# ax2.set_ylabel('Hours Spent on Safety Reports')
+
+	plt.title('Safety Events over Time')
+
+	plt.tight_layout()
+	plt.savefig('figures/safety_plot.png')
 
 if __name__ == '__main__':
 	# action_df = action_pull()
 	# action_df.to_csv('data/comment_action.csv')
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
-	stacked_actions(a_df, plot_type='count')
 	hour_df = pd.read_csv('data/ws_hours.csv')
 	wh_df = pd.merge(a_df, hour_df, left_on='_id', right_on='id')
+	stacked_actions(wh_df, plot_type='count')
 	stacked_actions(wh_df, plot_type='hours')
+
+	safety_plot(wh_df)
 
 	# gauge_df = gauge_pull()
 	# g_df = gauge_events(gauge_df)

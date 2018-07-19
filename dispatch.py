@@ -97,42 +97,46 @@ def dispatch_work(df):
 
 def missed_dispatch(df):
 	colors = {'west': '#59b7f9', 'north': '#7759f9'}
+	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
 
-	for bu in df['BusinessUnit'].unique():
-		plt.close()
-		fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6), sharey=True)
+	plt.close()
+	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6), sharey=True)
 
-		bu_df = df.loc[df['BusinessUnit'] == bu]
-		bu_df.loc[bu_df['Action Type - No count'].isnull(),
-				  'Action Type - No count'] = 'Not Completed'
+	for ax, bu in zip((ax1, ax2), df['BusinessUnit'].unique()):
+		bu_df = df.loc[(df['BusinessUnit'] == bu) &
+					   (df['Action Type - No count'] != 'cIBatches') &
+					   (df['Action Type - No count'] != 'extBuildUp'), :]
+		bu_df.loc[bu_df['Action Type - No count'] == 'Safety 3.0',
+				  'Action Type - No count'] = 'Safety'
+		bu_df.loc[(bu_df['Action Type - No count'] =='Plgr. Insp.') |
+				  (bu_df['Action Type - No count'] =='Plgr. Change'),
+				  'Action Type - No count'] = 'Plunger'
+		bu_df.loc[bu_df['Action Type - No count'] == 'soapSticks',
+				  'Action Type - No count'] = 'Soap Sticks'
+		bu_df.loc[bu_df['Action Type - No count'] == 'warmBootRTU',
+				  'Action Type - No count'] = 'Boot RTU'
 
-		dispatch_df = bu_df.groupby(['BusinessUnit', 'Action Type - No count'],
-									as_index=False).count()
-		completed_df = bu_df.loc[bu_df['id'].notnull(), :]\
-					   .groupby(['BusinessUnit', 'Action Type - No count'],
-								 as_index=False).count()
+		dispatch_df = bu_df.loc[bu_df['id'].notnull(), :]\
+					  .groupby(['BusinessUnit', 'Action Type - No count'],
+								as_index=False).count()
+		if 'Soap Sticks' not in dispatch_df['Action Type - No count'].unique():
+			dispatch_df = dispatch_df.append(pd.DataFrame([[bu, 'Soap Sticks', 0, 0]],
+											 columns=dispatch_df.columns))
 
 		dispatch_df.sort_values('Action Type - No count', inplace=True)
-		completed_df.sort_values('Action Type - No count', inplace=True)
 
-		ax1.barh(np.arange(len(bu_df['Action Type - No count'].unique())),
-				 dispatch_df['PriorityLevel'].values, .8,
-				 color=colors[bu.lower()])
+		ax.barh(np.arange(len(dispatch_df['Action Type - No count'].unique())),
+				dispatch_df['PriorityLevel'].values / drivers[bu.lower()], .8,
+				color=colors[bu.lower()])
+		ax.set_xlabel('Count of Action per Driver')
+		ax.set_title(bu)
+		ax.set_xlim(0, 70)
 
-		ax2.barh(np.arange(len(completed_df['Action Type - No count'].unique())),
-				 completed_df['PriorityLevel'].values, .8,
-				 color=colors[bu.lower()])
+	ax1.set_yticks(np.arange(len(dispatch_df['Action Type - No count'].unique())))
+	ax1.set_yticklabels(sorted(list(dispatch_df['Action Type - No count'].unique())))
 
-		ax1.set_yticks(np.arange(len(bu_df['Action Type - No count'].unique())))
-		ax1.set_yticklabels(sorted(list(bu_df['Action Type - No count'].unique())))
-
-		ax1.set_title('Total Actions Dispatched')
-		ax2.set_title('Completed Dispatch Actions')
-		ax1.set_xlabel('Count of Action')
-		ax2.set_xlabel('Count of Action')
-
-		plt.suptitle('Total and Completed Dispatch Events for {}'.format(bu))
-		plt.savefig('figures/dispatch_review_{}.png'.format(bu.lower()))
+	plt.suptitle('Completed Dispatch Events'.format(bu))
+	plt.savefig('figures/dispatch_complete.png'.format(bu.lower()))
 
 def dispatch_deferment(df):
 	colors = {'west': '#59b7f9', 'north': '#7759f9'}
@@ -183,6 +187,56 @@ def dispatch_hours(df):
 		plt.ylabel('Average Hours Spent for Each Priority')
 		plt.savefig('figures/dispatch_hours_{}.png'.format(bu.lower()))
 
+def dispatch_rate(df):
+	colors = {'west': '#59b7f9', 'north': '#7759f9'}
+
+	df['CalcDate'] = pd.to_datetime(df['CalcDate'])
+	df.loc[:, 'CalcDate'] = df.loc[:, 'CalcDate'].map(lambda x:100*x.year + x.month)
+
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+
+	for bu in df['BusinessUnit'].unique():
+		bu_df = df.loc[df['BusinessUnit'] == bu]
+		bu_df.loc[bu_df['Action Type - No count'].notnull(),
+				  'Action Type - No count'] = 'Completed'
+		bu_df.loc[bu_df['Action Type - No count'].isnull(),
+				  'Action Type - No count'] = 'Not Completed'
+
+		dispatch_df = bu_df.groupby(['BusinessUnit', 'Action Type - No count',
+									 'CalcDate'],
+									as_index=False).count()
+
+		dispatch_df.sort_values('Action Type - No count', inplace=True)
+
+		plot_df = pd.DataFrame(columns=['BusinessUnit', 'CalcDate', 'Completed'])
+		df_months = list(dispatch_df['CalcDate'].unique())
+		df_months.remove(201807)
+
+		for month in df_months:
+			comp = dispatch_df.loc[(dispatch_df['Action Type - No count'] == 'Completed') &
+								   (dispatch_df['CalcDate'] == month), 'Job_Rank'].values[0]
+			not_comp = dispatch_df.loc[(dispatch_df['Action Type - No count'] == 'Not Completed') &
+								   	   (dispatch_df['CalcDate'] == month), 'Job_Rank'].values[0]
+			plot_df = plot_df.append(pd.DataFrame([[bu, month, (comp / (comp + not_comp)) * 100]],
+						   			 columns=['BusinessUnit', 'CalcDate', 'Completed']))
+		plot_df.sort_values('CalcDate', inplace=True)
+
+		ax.plot(np.arange(len(df_months)), plot_df['Completed'].values,
+				'o-', color=colors[bu.lower()], label=bu)
+
+	months = ['Feb 2018', 'Mar 2018', 'Apr 2018', 'May 2018', 'Jun 2018']
+
+	plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
+	ax.set_xticks(np.arange(len(df_months)))
+	ax.set_xticklabels(months)
+	plt.ylim(ymin=0, ymax=100)
+	plt.ylabel('Percent Dispatch Actions Completed')
+	plt.title('Completed Dispatch Events')
+	plt.legend()
+	plt.tight_layout()
+	plt.savefig('figures/dispatch_review.png')
+
 
 if __name__ == '__main__':
 	df = dispatch_pull()
@@ -192,6 +246,9 @@ if __name__ == '__main__':
 
 	missed_dispatch(df[['BusinessUnit', 'PriorityLevel',
 						'id', 'Action Type - No count']])
+
+	# dispatch_rate(df[['BusinessUnit', 'CalcDate',
+	# 				  'Job_Rank', 'Action Type - No count']])
 
 	# dispatch_deferment(df.loc[df['PriorityLevel'] != 0,
 	# 					 ['PriorityLevel', 'DefermentGas', 'BusinessUnit',

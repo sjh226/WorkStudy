@@ -601,6 +601,11 @@ def stacked_actions(df_true, plot_type='count'):
 				divisor = (drivers[bu.lower()] * 60 * 60)
 				height = 20
 
+			if action == 'Gauge':
+				this = bu_df.loc[bu_df['Action Type - No count'] == action, :]
+				this['hours'] = this['Wellkey'] / divisor
+				print(this)
+
 			axis.bar(list(plot_x.values()),
 					 plot_vals / divisor,
 					 .8, bottom=bottoms, color=colors[i],
@@ -687,16 +692,125 @@ def safety_plot(df_true):
 	plt.tight_layout()
 	plt.savefig('figures/safety_plot.png')
 
+def venting(df):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(6, 6))
+
+	df['Action Date'] = pd.to_datetime(df['Action Date'])
+	df['Action Date'] = df['Action Date'].map(lambda x:100*x.year + x.month)
+
+	month_vals = df['Action Date'].unique()
+	months = ['March 2017', 'Apr 2017', 'May 2017', 'Jun 2017', \
+			  'Jul 2017', 'Aug 2017', 'Sep 2017', 'Oct 2017', 'Nov 2017', 'Dec 2017', \
+			  'Jan 2018', 'Feb 2018', 'Mar 2018', 'Apr 2018']
+	plot_x = {month: i for i, month in enumerate(sorted(month_vals))}
+
+	hours_df = df.groupby('Action Date', as_index=False).sum()
+	hours_df.sort_values('Action Date', inplace=True)
+
+	ax.plot(list(plot_x.values()), hours_df['agg_dur'] / 60 / 60, 'o-',
+			color='#287acc')
+	ax.set_xticks(list(plot_x.values()))
+	ax.set_xticklabels(months)
+	plt.setp(ax.xaxis.get_majorticklabels(), rotation=90)
+
+	plt.title('North Venting over Time')
+	# plt.xlabel('Business Unit')
+	plt.ylabel('Total Hours Spent Venting')
+	plt.tight_layout()
+	plt.savefig('figures/north_venting.png')
+
+def pie(df):
+	plt.close()
+	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+
+	df.loc[(df['Action Type - No count'] == 'Safety 2.0') |
+		   (df['Action Type - No count'] == 'Safety 3.0'),
+		   'Action Type - No count'] = 'Safety'
+	df.loc[(df['Action Type - No count'] == 'Plgr. Change') |
+		   (df['Action Type - No count'] == 'Plgr. Insp.') |
+		   (df['Action Type - No count'] == 'Plgr. Incomplete'),
+		   'Action Type - No count'] = 'Plunger'
+	df.loc[df['Action Type 1'] == 'Compressor - Gas Lift',
+		   'Action Type - No count'] = 'Compressor'
+	df.loc[(df['Action Type 1'] == 'Gas Scrubber') |
+		   (df['Action Type 1'] == 'Gas Scrubber Separator') |
+	  	   (df['Action Type 1'] == 'Sand Separator') |
+		   (df['Action Type 1'] == 'Dehy') |
+		   (df['Action Type 1'] == 'Fuel Gas/Start Gas') |
+	  	   (df['Action Type 1'] == 'Heat Medium') |
+	  	   (df['Action Type 1'] == 'Heater Treater') |
+	  	   (df['Action Type 1'] == 'Instrument Air') |
+	  	   (df['Action Type 1'] == 'Sales Valve') |
+	  	   (df['Action Type 1'] == 'Sales Valve (PV)') |
+	  	   (df['Action Type 1'] == 'Amine') |
+	  	   (df['Action Type 1'] == 'Separator Inlet Valve (XV)'),
+	  	   'Action Type - No count'] = 'Separator'
+	df.loc[(df['Action Type 1'] == 'Tanks') |
+		   (df['Action Type 1'] == 'Tanks/Pits') |
+		   (df['Action Type 1'] == 'Water Transfer'),
+	       'Action Type - No count'] = 'Liquids'
+	df.loc[(df['Action Type 1'] == 'Pumping Unit') |
+		   (df['Action Type 1'] == 'Recirc Pump'),
+		   'Action Type - No count'] = 'Pumping System'
+	df.loc[df['Action Type 1'] == 'Instrumentation',
+		   'Action Type - No count'] = 'Instrumentation'
+	df.loc[df['Action Type 1'] == 'Wellhead',
+		   'Action Type - No count'] = 'Wellhead'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('rtu')),
+		   'Action Type - No count'] = 'RTU'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('pump')),
+		   'Action Type - No count'] = 'Pumping System'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('pm')),
+		   'Action Type - No count'] = 'PM'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('plunger')),
+		   'Action Type - No count'] = 'Plunger'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('comp')),
+		   'Action Type - No count'] = 'Compressor'
+
+	df_short = df.loc[(df['Action Type - No count'] != 'Troubleshoot Charg. Sys.') &
+					  (df['Action Type - No count'] != 'cIBatches') &
+					  (df['Action Type - No count'] != 'documentSurfaceEquipment') &
+					  (df['Action Type - No count'] != 'extBuildUp') &
+					  (df['Action Type - No count'] != 'fluidShot') &
+					  (df['Action Type - No count'] != 'pressureCheck') &
+					  (df['Action Type - No count'] != 'snowRemoval') &
+					  (df['Action Type - No count'] != 'soapSticks') &
+					  (df['Action Type - No count'] != 'SF') &
+					  (df['Action Type - No count'] != 'WM Completed') &
+					  (df['Action Type - No count'] != 'rodPumpSpeedChange') &
+					  (df['Action Type - No count'] != 'warmBootRTU'), :]
+
+	hours_df = df_short.groupby('Action Type - No count', as_index=False).sum()
+	hours_df.sort_values('agg_dur', inplace=True)
+
+	plt.pie(hours_df['agg_dur'], labels=hours_df['Action Type - No count'])
+
+	plt.title('Resource Allocation')
+	# plt.legend()
+	# plt.tight_layout()
+	plt.savefig('figures/pie.png')
+
+
 if __name__ == '__main__':
 	# action_df = action_pull()
 	# action_df.to_csv('data/comment_action.csv')
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
 	hour_df = pd.read_csv('data/ws_hours.csv')
 	wh_df = pd.merge(a_df, hour_df, left_on='_id', right_on='id')
-	stacked_actions(wh_df, plot_type='count')
-	stacked_actions(wh_df, plot_type='hours')
+	# stacked_actions(wh_df, plot_type='count')
+	# stacked_actions(wh_df, plot_type='hours')
+	# venting(wh_df.loc[(wh_df['BusinessUnit'] == 'North') &
+	# 				  (wh_df['Action Type - No count'] == 'Vent'),
+	# 				  ['Action Date', 'agg_dur']])
+	pie(wh_df[['Action Type - No count', 'Action Type 1', 'CommentAction', 'agg_dur']])
 
-	safety_plot(wh_df)
+	# safety_plot(wh_df)
 
 	# gauge_df = gauge_pull()
 	# g_df = gauge_events(gauge_df)

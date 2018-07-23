@@ -722,7 +722,7 @@ def venting(df):
 
 def pie(df):
 	plt.close()
-	fig, ax = plt.subplots(1, 1, figsize=(10, 10))
+	fig, ax = plt.subplots(1, 1, figsize=(8, 8))
 
 	df.loc[(df['Action Type - No count'] == 'Safety 2.0') |
 		   (df['Action Type - No count'] == 'Safety 3.0'),
@@ -789,11 +789,14 @@ def pie(df):
 	hours_df = df_short.groupby('Action Type - No count', as_index=False).sum()
 	hours_df.sort_values('agg_dur', inplace=True)
 
-	plt.pie(hours_df['agg_dur'], labels=hours_df['Action Type - No count'])
+	plt.pie(hours_df['agg_dur'],
+			labels=hours_df['Action Type - No count'],
+			colors=['#5bd81c', '#ffb200', '#ba5600', '#7c20c1', '#6688e8',
+					'#ad1362', '#edde8e', '#0c590b', '#008fa8', '#d68ffc',
+					'#ff8282', '#ffe500', '#9cfc8f'],
+			startangle=180)
 
-	plt.title('Resource Allocation')
-	# plt.legend()
-	# plt.tight_layout()
+	plt.title('Resource Allocation by Time Spent per Action', fontsize=20)
 	plt.savefig('figures/pie.png')
 
 

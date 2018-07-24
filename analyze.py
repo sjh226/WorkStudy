@@ -676,16 +676,13 @@ def safety_plot(df_true):
 						   		  'Action Date'], as_index=False).sum()
 	hours_df.sort_values('Action Date', inplace=True)
 
-	ax1.plot(list(plot_x.values()), count_df['agg_dur'], .8, 'o-',
+	ax1.plot(list(plot_x.values()), count_df['agg_dur'], 'o-',
 			 color='#359333')
-	# ax2.plot(list(plot_x.values()), hours_df['agg_dur'], .8, 'o-',
-	# 		 color='#15af27')
 
 	ax1.set_xticks(list(plot_x.values()))
 	ax1.set_xticklabels(months)
 	ax1.set_ylabel('Count of Reports per Driver')
 	plt.setp(ax1.xaxis.get_majorticklabels(), rotation=90)
-	# ax2.set_ylabel('Hours Spent on Safety Reports')
 
 	plt.title('Safety Events over Time')
 
@@ -811,9 +808,9 @@ if __name__ == '__main__':
 	# venting(wh_df.loc[(wh_df['BusinessUnit'] == 'North') &
 	# 				  (wh_df['Action Type - No count'] == 'Vent'),
 	# 				  ['Action Date', 'agg_dur']])
-	pie(wh_df[['Action Type - No count', 'Action Type 1', 'CommentAction', 'agg_dur']])
+	# pie(wh_df[['Action Type - No count', 'Action Type 1', 'CommentAction', 'agg_dur']])
 
-	# safety_plot(wh_df)
+	safety_plot(wh_df)
 
 	# gauge_df = gauge_pull()
 	# g_df = gauge_events(gauge_df)

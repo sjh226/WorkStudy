@@ -102,7 +102,7 @@ def missed_dispatch(df):
 	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
 
 	plt.close()
-	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6), sharey=True)
+	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8), sharey=True)
 
 	for ax, bu in zip((ax1, ax2), df['BusinessUnit'].unique()):
 		bu_df = df.loc[(df['BusinessUnit'] == bu) &
@@ -187,7 +187,7 @@ def missed_dispatch(df):
 	ax1.set_yticks(np.arange(len(dispatch_df['Action Type - No count'].unique())))
 	ax1.set_yticklabels(sorted(list(dispatch_df['Action Type - No count'].unique())))
 
-	plt.suptitle('Completed Dispatch Events'.format(bu))
+	plt.suptitle('Completed Dispatch Events', x=0.55, y=0.992, fontsize=14)
 	plt.tight_layout()
 	plt.savefig('figures/dispatch_complete.png'.format(bu.lower()))
 
@@ -301,8 +301,8 @@ if __name__ == '__main__':
 						'id', 'Action Type - No count',
 						'Action Type 1', 'CommentAction']])
 
-	# dispatch_rate(df[['BusinessUnit', 'CalcDate',
-	# 				  'Job_Rank', 'Action Type - No count']])
+	dispatch_rate(df[['BusinessUnit', 'CalcDate',
+					  'Job_Rank', 'Action Type - No count']])
 
 	# dispatch_deferment(df.loc[df['PriorityLevel'] != 0,
 	# 					 ['PriorityLevel', 'DefermentGas', 'BusinessUnit',

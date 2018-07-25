@@ -187,7 +187,7 @@ def missed_dispatch(df):
 	ax1.set_yticks(np.arange(len(dispatch_df['Action Type - No count'].unique())))
 	ax1.set_yticklabels(sorted(list(dispatch_df['Action Type - No count'].unique())))
 
-	plt.suptitle('Completed Dispatch Events'.format(bu))
+	plt.suptitle('Completed Dispatch Events', x=0.55, y=0.992, fontsize=14)
 	plt.tight_layout()
 	plt.savefig('figures/dispatch_complete.png'.format(bu.lower()))
 

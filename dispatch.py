@@ -301,8 +301,8 @@ if __name__ == '__main__':
 						'id', 'Action Type - No count',
 						'Action Type 1', 'CommentAction']])
 
-	# dispatch_rate(df[['BusinessUnit', 'CalcDate',
-	# 				  'Job_Rank', 'Action Type - No count']])
+	dispatch_rate(df[['BusinessUnit', 'CalcDate',
+					  'Job_Rank', 'Action Type - No count']])
 
 	# dispatch_deferment(df.loc[df['PriorityLevel'] != 0,
 	# 					 ['PriorityLevel', 'DefermentGas', 'BusinessUnit',

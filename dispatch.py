@@ -126,11 +126,11 @@ def missed_dispatch(df):
 		dispatch_df.sort_values('Action Type - No count', inplace=True)
 
 		ax.barh(np.arange(len(dispatch_df['Action Type - No count'].unique())),
-				dispatch_df['PriorityLevel'].values / drivers[bu.lower()], .8,
+				dispatch_df['PriorityLevel'].values / drivers[bu.lower()] / 5.3, .8,
 				color=colors[bu.lower()])
-		ax.set_xlabel('Count of Action per Driver')
+		ax.set_xlabel('Count of Action per Driver per Month')
 		ax.set_title(bu)
-		ax.set_xlim(0, 70)
+		ax.set_xlim(0, 14)
 
 	ax1.set_yticks(np.arange(len(dispatch_df['Action Type - No count'].unique())))
 	ax1.set_yticklabels(sorted(list(dispatch_df['Action Type - No count'].unique())))

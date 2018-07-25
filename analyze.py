@@ -353,8 +353,8 @@ def site_report(df, graph_per='driver'):
 	plt.close()
 	fig, ax = plt.subplots(1, 1, figsize=(4, 4))
 
-	colors = {'east': '#22b517', 'midcon': '#2582c4',
-			  'north': '#601299', 'west': '#e20b0b'}
+	colors = {'east': '#128e14', 'midcon': '#b57800',
+			  'north': '#7759f9', 'west': '#59b7f9'}
 
 	grouped_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).mean()
 
@@ -383,14 +383,75 @@ def work_dist(df, graph_per='driver'):
 
 	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
 	wells = {'east': 880, 'midcon': 2853, 'north': 2003, 'west': 3834}
-	colors = {'east': '#22b517', 'midcon': '#2582c4',
-			  'north': '#601299', 'west': '#e20b0b'}
+	colors = {'east': '#128e14', 'midcon': '#b57800',
+			  'north': '#7759f9', 'west': '#59b7f9'}
 
 	df.loc[(df['Action Type - No count'] == 'Safety 2.0') |
 		   (df['Action Type - No count'] == 'Safety 3.0'),
 		   'Action Type - No count'] = 'Safety'
+	df.loc[(df['Action Type - No count'] == 'Plgr. Change') |
+		   (df['Action Type - No count'] == 'Plgr. Insp.') |
+		   (df['Action Type - No count'] == 'Plgr. Incomplete'),
+		   'Action Type - No count'] = 'Plunger'
+	df.loc[df['Action Type 1'] == 'Compressor - Gas Lift',
+		   'Action Type - No count'] = 'Compressor'
+	df.loc[(df['Action Type 1'] == 'Gas Scrubber') |
+		   (df['Action Type 1'] == 'Gas Scrubber Separator') |
+	  	   (df['Action Type 1'] == 'Sand Separator') |
+		   (df['Action Type 1'] == 'Dehy') |
+		   (df['Action Type 1'] == 'Fuel Gas/Start Gas') |
+	  	   (df['Action Type 1'] == 'Heat Medium') |
+	  	   (df['Action Type 1'] == 'Heater Treater') |
+	  	   (df['Action Type 1'] == 'Instrument Air') |
+	  	   (df['Action Type 1'] == 'Sales Valve') |
+	  	   (df['Action Type 1'] == 'Sales Valve (PV)') |
+	  	   (df['Action Type 1'] == 'Amine') |
+	  	   (df['Action Type 1'] == 'Separator Inlet Valve (XV)'),
+	  	   'Action Type - No count'] = 'Separator'
+	df.loc[(df['Action Type 1'] == 'Tanks') |
+		   (df['Action Type 1'] == 'Tanks/Pits') |
+		   (df['Action Type 1'] == 'Water Transfer'),
+	       'Action Type - No count'] = 'Liquids'
+	df.loc[(df['Action Type 1'] == 'Pumping Unit') |
+		   (df['Action Type 1'] == 'Recirc Pump'),
+		   'Action Type - No count'] = 'Pumping System'
+	df.loc[df['Action Type 1'] == 'Instrumentation',
+		   'Action Type - No count'] = 'Instrumentation'
+	df.loc[df['Action Type 1'] == 'Wellhead',
+		   'Action Type - No count'] = 'Wellhead'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('rtu')),
+		   'Action Type - No count'] = 'RTU'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('pump')),
+		   'Action Type - No count'] = 'Pumping System'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('pm')),
+		   'Action Type - No count'] = 'PM'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('plunger')),
+		   'Action Type - No count'] = 'Plunger'
+	df.loc[(df['Action Type - No count'] == 'WM Completed') &
+		   (df['CommentAction'].str.contains('comp')),
+		   'Action Type - No count'] = 'Compressor'
 
-	grouped_df = df.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).sum()
+	df_short = df.loc[(df['Action Type - No count'] != 'Troubleshoot Charg. Sys.') &
+					  (df['Action Type - No count'] != 'cIBatches') &
+					  (df['Action Type - No count'] != 'documentSurfaceEquipment') &
+					  (df['Action Type - No count'] != 'extBuildUp') &
+					  (df['Action Type - No count'] != 'fluidShot') &
+					  (df['Action Type - No count'] != 'pressureCheck') &
+					  (df['Action Type - No count'] != 'snowRemoval') &
+					  (df['Action Type - No count'] != 'soapSticks') &
+					  (df['Action Type - No count'] != 'SF') &
+					  (df['Action Type - No count'] != 'WM Completed') &
+					  (df['Action Type - No count'] != 'rodPumpSpeedChange') &
+					  (df['Action Type - No count'] != 'warmBootRTU'), :]
+
+	df_short.loc[:, 'Action Date'] = pd.to_datetime(df_short.loc[:, 'Action Date'])
+	days = (df_short['Action Date'].max() - df_short['Action Date'].min()).days
+
+	grouped_df = df_short.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).mean()
 	for bu in grouped_df['BusinessUnit'].unique():
 		for event in grouped_df['Action Type - No count'].unique():
 			if event not in grouped_df.loc[grouped_df['BusinessUnit'] == bu,
@@ -402,7 +463,7 @@ def work_dist(df, graph_per='driver'):
 											   ignore_index=True)
 	grouped_df.sort_values(['BusinessUnit', 'Action Type - No count'], inplace=True)
 
-	events = sorted(df['Action Type - No count'].unique())
+	events = sorted(df_short['Action Type - No count'].unique())
 
 	i = 0
 	index = np.arange(len(events))
@@ -412,7 +473,7 @@ def work_dist(df, graph_per='driver'):
 		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :].sort_values('Action Type - No count')
 
 		if graph_per == 'driver':
-			divisor = drivers[bu.lower()]
+			divisor = drivers[bu.lower()] / 60
 			graph_title = ' per Driver'
 			scale = ''
 			graph_save = 'driver'
@@ -422,21 +483,29 @@ def work_dist(df, graph_per='driver'):
 			scale = ''
 			graph_save = 'well'
 		else:
-			divisor = 100
+			divisor =  60
 			graph_title = ''
-			scale = 'Hundreds of '
+			scale = ''
 			graph_save = 'total'
 
 		ax.bar(index + (width * i),
-			   bu_df['agg_dur'].values / divisor / 60 / 60, width,
+			   bu_df['agg_dur'].values / divisor, width,
 			   color=colors[bu.lower()], label=bu)
-		ax.set_xticks(index + width / 2)
+		ax.set_xticks(index + width * 1.5)
 		ax.set_xticklabels(events)
+
 		i += 1
+
+	minor_ticks = np.arange(len(events)) - 0.175
+	ax.set_xticks(minor_ticks, minor=True)
+	ax.grid(which='major', axis='y', color='gray',
+			linestyle='--', linewidth=1, alpha=0.5)
+	ax.grid(which='minor', axis='x', color='gray',
+			linestyle='--', linewidth=1, alpha=0.5)
 
 	plt.title('Action Hours by BU (Excliding WM, Gauge, and SF)')
 	plt.xlabel('Action')
-	plt.ylabel('{}Hours Spent per Event{}'.format(scale, graph_title))
+	plt.ylabel('{}Minutes Spent {}per Event'.format(scale, graph_title))
 	plt.xticks(rotation='vertical')
 	plt.legend()
 	plt.tight_layout()
@@ -810,7 +879,7 @@ if __name__ == '__main__':
 	# 				  ['Action Date', 'agg_dur']])
 	# pie(wh_df[['Action Type - No count', 'Action Type 1', 'CommentAction', 'agg_dur']])
 
-	safety_plot(wh_df)
+	# safety_plot(wh_df)
 
 	# gauge_df = gauge_pull()
 	# g_df = gauge_events(gauge_df)
@@ -823,7 +892,7 @@ if __name__ == '__main__':
 
 	# dis_df = dispatch_pull()
 	# work_dis_df = dis_df[['BusinessUnit', '_id', 'Action Type - No count']]
-	# for g_type in ['driver', 'well']:
+	# for g_type in ['driver']:
 	# 	work_dist(work_dis_df, g_type)
 
 	# hour_df = pd.read_csv('data/ws_hours.csv')
@@ -836,8 +905,10 @@ if __name__ == '__main__':
 	# site_report(wh_df[wh_df['Action Type - No count'] == 'Site Report'])
 
 	# action_count(a_df)
-	# for g_type in ['driver', 'all']:
-	# 	work_dist(wh_df[['BusinessUnit', 'Action Type - No count', 'agg_dur']], g_type)
+	for g_type in ['all']:
+		work_dist(wh_df[['BusinessUnit', 'Action Type - No count',
+						 'Action Type 1', 'CommentAction', 'agg_dur',
+						 'Action Date']], g_type)
 
 	# dispatch_wm(dis_df.loc[(dis_df['Action Type - No count'] == 'WM Completed') &
 	# 				   	   (dis_df['CommentAction'].notnull()), :])

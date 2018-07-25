@@ -31,6 +31,8 @@ def dispatch_pull():
 				,F.BusinessUnit
 				,D.Job_Rank
 				,ALH.[Action Type - No count]
+				,ALH.[Action Type 1]
+				,ALH.[CommentAction]
 		  FROM (SELECT	FacilityKey
 						,D.LocationID
 						,CalcDate
@@ -106,22 +108,71 @@ def missed_dispatch(df):
 		bu_df = df.loc[(df['BusinessUnit'] == bu) &
 					   (df['Action Type - No count'] != 'cIBatches') &
 					   (df['Action Type - No count'] != 'extBuildUp'), :]
-		bu_df.loc[bu_df['Action Type - No count'] == 'Safety 3.0',
-				  'Action Type - No count'] = 'Safety'
-		bu_df.loc[(bu_df['Action Type - No count'] =='Plgr. Insp.') |
-				  (bu_df['Action Type - No count'] =='Plgr. Change'),
-				  'Action Type - No count'] = 'Plunger'
-		bu_df.loc[bu_df['Action Type - No count'] == 'soapSticks',
-				  'Action Type - No count'] = 'Soap Sticks'
-		bu_df.loc[bu_df['Action Type - No count'] == 'warmBootRTU',
-				  'Action Type - No count'] = 'Boot RTU'
+		bu_df.loc[(bu_df['Action Type - No count'] == 'Safety 2.0') |
+			   (bu_df['Action Type - No count'] == 'Safety 3.0'),
+			   'Action Type - No count'] = 'Safety'
+		bu_df.loc[(bu_df['Action Type - No count'] == 'Plgr. Change') |
+			   (bu_df['Action Type - No count'] == 'Plgr. Insp.') |
+			   (bu_df['Action Type - No count'] == 'Plgr. Incomplete'),
+			   'Action Type - No count'] = 'Plunger'
+		bu_df.loc[bu_df['Action Type 1'] == 'Compressor - Gas Lift',
+			   'Action Type - No count'] = 'Compressor'
+		bu_df.loc[(bu_df['Action Type 1'] == 'Gas Scrubber') |
+			   (bu_df['Action Type 1'] == 'Gas Scrubber Separator') |
+		  	   (bu_df['Action Type 1'] == 'Sand Separator') |
+			   (bu_df['Action Type 1'] == 'Dehy') |
+			   (bu_df['Action Type 1'] == 'Fuel Gas/Start Gas') |
+		  	   (bu_df['Action Type 1'] == 'Heat Medium') |
+		  	   (bu_df['Action Type 1'] == 'Heater Treater') |
+		  	   (bu_df['Action Type 1'] == 'Instrument Air') |
+		  	   (bu_df['Action Type 1'] == 'Sales Valve') |
+		  	   (bu_df['Action Type 1'] == 'Sales Valve (PV)') |
+		  	   (bu_df['Action Type 1'] == 'Amine') |
+		  	   (bu_df['Action Type 1'] == 'Separator Inlet Valve (XV)'),
+		  	   'Action Type - No count'] = 'Separator'
+		bu_df.loc[(bu_df['Action Type 1'] == 'Tanks') |
+			   (bu_df['Action Type 1'] == 'Tanks/Pits') |
+			   (bu_df['Action Type 1'] == 'Water Transfer'),
+		       'Action Type - No count'] = 'Liquids'
+		bu_df.loc[(bu_df['Action Type 1'] == 'Pumping Unit') |
+			   (bu_df['Action Type 1'] == 'Recirc Pump'),
+			   'Action Type - No count'] = 'Pumping System'
+		bu_df.loc[bu_df['Action Type 1'] == 'Instrumentation',
+			   'Action Type - No count'] = 'Instrumentation'
+		bu_df.loc[bu_df['Action Type 1'] == 'Wellhead',
+			   'Action Type - No count'] = 'Wellhead'
+		bu_df.loc[(bu_df['Action Type - No count'] == 'WM Completed') &
+			   (bu_df['CommentAction'].str.contains('rtu')),
+			   'Action Type - No count'] = 'RTU'
+		bu_df.loc[(bu_df['Action Type - No count'] == 'WM Completed') &
+			   (bu_df['CommentAction'].str.contains('pump')),
+			   'Action Type - No count'] = 'Pumping System'
+		bu_df.loc[(bu_df['Action Type - No count'] == 'WM Completed') &
+			   (bu_df['CommentAction'].str.contains('pm')),
+			   'Action Type - No count'] = 'PM'
+		bu_df.loc[(bu_df['Action Type - No count'] == 'WM Completed') &
+			   (bu_df['CommentAction'].str.contains('plunger')),
+			   'Action Type - No count'] = 'Plunger'
+		bu_df.loc[(bu_df['Action Type - No count'] == 'WM Completed') &
+			   (bu_df['CommentAction'].str.contains('comp')),
+			   'Action Type - No count'] = 'Compressor'
 
-		dispatch_df = bu_df.loc[bu_df['id'].notnull(), :]\
+		df_short = bu_df.loc[(bu_df['Action Type - No count'] != 'Troubleshoot Charg. Sys.') &
+						  (bu_df['Action Type - No count'] != 'cIBatches') &
+						  (bu_df['Action Type - No count'] != 'documentSurfaceEquipment') &
+						  (bu_df['Action Type - No count'] != 'extBuildUp') &
+						  (bu_df['Action Type - No count'] != 'fluidShot') &
+						  (bu_df['Action Type - No count'] != 'pressureCheck') &
+						  (bu_df['Action Type - No count'] != 'snowRemoval') &
+						  (bu_df['Action Type - No count'] != 'soapSticks') &
+						  (bu_df['Action Type - No count'] != 'SF') &
+						  (bu_df['Action Type - No count'] != 'WM Completed') &
+						  (bu_df['Action Type - No count'] != 'rodPumpSpeedChange') &
+						  (bu_df['Action Type - No count'] != 'warmBootRTU'), :]
+
+		dispatch_df = df_short.loc[df_short['id'].notnull(), :]\
 					  .groupby(['BusinessUnit', 'Action Type - No count'],
 								as_index=False).count()
-		if 'Soap Sticks' not in dispatch_df['Action Type - No count'].unique():
-			dispatch_df = dispatch_df.append(pd.DataFrame([[bu, 'Soap Sticks', 0, 0]],
-											 columns=dispatch_df.columns))
 
 		dispatch_df.sort_values('Action Type - No count', inplace=True)
 
@@ -130,12 +181,14 @@ def missed_dispatch(df):
 				color=colors[bu.lower()])
 		ax.set_xlabel('Count of Action per Driver per Month')
 		ax.set_title(bu)
-		ax.set_xlim(0, 14)
+		ax.set_xlim(0, 8)
 
+	ax1.text(5.5, .9, 'West Gauge = 19.2', fontsize=9)
 	ax1.set_yticks(np.arange(len(dispatch_df['Action Type - No count'].unique())))
 	ax1.set_yticklabels(sorted(list(dispatch_df['Action Type - No count'].unique())))
 
 	plt.suptitle('Completed Dispatch Events'.format(bu))
+	plt.tight_layout()
 	plt.savefig('figures/dispatch_complete.png'.format(bu.lower()))
 
 def dispatch_deferment(df):
@@ -245,7 +298,8 @@ if __name__ == '__main__':
 	hour_dis_df = df.merge(hour_df, on='id')
 
 	missed_dispatch(df[['BusinessUnit', 'PriorityLevel',
-						'id', 'Action Type - No count']])
+						'id', 'Action Type - No count',
+						'Action Type 1', 'CommentAction']])
 
 	# dispatch_rate(df[['BusinessUnit', 'CalcDate',
 	# 				  'Job_Rank', 'Action Type - No count']])

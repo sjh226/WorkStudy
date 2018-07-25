@@ -102,7 +102,7 @@ def missed_dispatch(df):
 	drivers = {'east': 42, 'midcon': 61, 'north': 69, 'west': 140}
 
 	plt.close()
-	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 6), sharey=True)
+	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 8), sharey=True)
 
 	for ax, bu in zip((ax1, ax2), df['BusinessUnit'].unique()):
 		bu_df = df.loc[(df['BusinessUnit'] == bu) &

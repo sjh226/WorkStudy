@@ -852,6 +852,8 @@ def pie(df):
 					  (df['Action Type - No count'] != 'rodPumpSpeedChange') &
 					  (df['Action Type - No count'] != 'warmBootRTU'), :]
 
+	df_short = impute(df_short)
+
 	hours_df = df_short.groupby('Action Type - No count', as_index=False).sum()
 	hours_df.sort_values('agg_dur', inplace=True)
 
@@ -863,7 +865,15 @@ def pie(df):
 			startangle=180)
 
 	plt.title('Resource Allocation by Time Spent per Action', fontsize=20)
-	plt.savefig('figures/pie.png')
+	plt.savefig('figures/pie2.png')
+
+def impute(df):
+	for action in df['Action Type - No count'].unique():
+		avg_time = df.loc[(df['Action Type - No count'] == action) &
+						  (df['agg_dur'].notnull()), 'agg_dur'].mean()
+		df.loc[(df['Action Type - No count'] == action) &
+			   (df['agg_dur'].isnull()), 'agg_dur'] = avg_time
+	return df
 
 
 if __name__ == '__main__':
@@ -871,13 +881,18 @@ if __name__ == '__main__':
 	# action_df.to_csv('data/comment_action.csv')
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
 	hour_df = pd.read_csv('data/ws_hours.csv')
-	wh_df = pd.merge(a_df, hour_df, left_on='_id', right_on='id')
+	left_df = pd.merge(a_df, hour_df, left_on='_id', right_on='id', how='left')
+	wh_df = left_df[left_df['agg_dur'].notnull()]
 	# stacked_actions(wh_df, plot_type='count')
 	# stacked_actions(wh_df, plot_type='hours')
 	# venting(wh_df.loc[(wh_df['BusinessUnit'] == 'North') &
 	# 				  (wh_df['Action Type - No count'] == 'Vent'),
 	# 				  ['Action Date', 'agg_dur']])
-	# pie(wh_df[['Action Type - No count', 'Action Type 1', 'CommentAction', 'agg_dur']])
+	left_df['Action Date'] = pd.to_datetime(left_df['Action Date'])
+	pie(left_df.loc[(left_df['Action Date'] >= '2017-12-01') &
+				  	(left_df['Action Date'] < '2018-05-01'),
+				  	['Action Type - No count', 'Action Type 1',
+					 'CommentAction', 'agg_dur']])
 
 	# safety_plot(wh_df)
 

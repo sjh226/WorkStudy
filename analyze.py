@@ -788,7 +788,7 @@ def venting(df):
 
 def pie(df):
 	plt.close()
-	fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+	fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 14))
 
 	df.loc[(df['Action Type - No count'] == 'Safety 2.0') |
 		   (df['Action Type - No count'] == 'Safety 3.0'),
@@ -854,25 +854,44 @@ def pie(df):
 
 	df_short = impute(df_short)
 
-	hours_df = df_short.groupby('Action Type - No count', as_index=False).sum()
-	hours_df.sort_values('agg_dur', inplace=True)
+	hours_df = df_short.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).sum()
+	hours_df.dropna(inplace=True)
 
-	plt.pie(hours_df['agg_dur'],
-			labels=hours_df['Action Type - No count'],
-			colors=['#5bd81c', '#ffb200', '#ba5600', '#7c20c1', '#6688e8',
-					'#ad1362', '#edde8e', '#0c590b', '#008fa8', '#d68ffc',
-					'#ff8282', '#ffe500', '#9cfc8f'],
-			startangle=180)
+	color_list = ['#5bd81c', '#ffb200', '#ba5600', '#7c20c1', '#6688e8',
+				  '#ad1362', '#edde8e', '#0c590b', '#008fa8', '#d68ffc',
+				  '#ff8282', '#ffe500', '#9cfc8f', '#002766']
+	colors = {}
+	for i, action in enumerate(list(hours_df['Action Type - No count'].unique()) + ['Misc']):
+		colors[action] = color_list[i]
 
-	plt.title('Resource Allocation by Time Spent per Action', fontsize=20)
-	plt.savefig('figures/pie2.png')
+	for bu, axis in zip(df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
+		bu_df = hours_df.loc[hours_df['BusinessUnit'] == bu, :]
+		bu_df.sort_values('agg_dur', inplace=True)
+		misc = bu_df.loc[bu_df['agg_dur'] < 2e+05, 'agg_dur'].sum()
+		bu_df = bu_df.append(pd.DataFrame([[bu, 'Misc', misc]],
+							 columns=bu_df.columns))
+		bu_df = bu_df.loc[bu_df['agg_dur'] >= 2e+05, :]
+
+		bu_colors = [colors[action] for action in bu_df['Action Type - No count'].unique()]
+
+		axis.pie(bu_df['agg_dur'],
+				labels=bu_df['Action Type - No count'],
+				colors=bu_colors,
+				startangle=180)
+		axis.set_title(bu.title(), fontsize=16)
+
+	plt.suptitle('Resource Allocation by Time Spent per Action', fontsize=20)
+	plt.savefig('figures/pie.png')
 
 def impute(df):
-	for action in df['Action Type - No count'].unique():
-		avg_time = df.loc[(df['Action Type - No count'] == action) &
-						  (df['agg_dur'].notnull()), 'agg_dur'].mean()
-		df.loc[(df['Action Type - No count'] == action) &
-			   (df['agg_dur'].isnull()), 'agg_dur'] = avg_time
+	for bu in df['BusinessUnit'].unique():
+		for action in df['Action Type - No count'].unique():
+			avg_time = df.loc[(df['Action Type - No count'] == action) &
+							  (df['agg_dur'].notnull()) &
+							  (df['BusinessUnit'] == bu), 'agg_dur'].mean()
+			df.loc[(df['Action Type - No count'] == action) &
+				   (df['agg_dur'].isnull()) &
+				   (df['BusinessUnit'] == bu), 'agg_dur'] = avg_time
 	return df
 
 
@@ -892,7 +911,7 @@ if __name__ == '__main__':
 	pie(left_df.loc[(left_df['Action Date'] >= '2017-12-01') &
 				  	(left_df['Action Date'] < '2018-05-01'),
 				  	['Action Type - No count', 'Action Type 1',
-					 'CommentAction', 'agg_dur']])
+					 'CommentAction', 'agg_dur', 'BusinessUnit']])
 
 	# safety_plot(wh_df)
 

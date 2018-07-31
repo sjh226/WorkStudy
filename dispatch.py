@@ -18,6 +18,18 @@ def dispatch_pull():
 
 	cursor = connection.cursor()
 	SQLCommand = ("""
+		DROP TABLE IF EXISTS #FacilityAction
+
+		SELECT  ALH.*
+				,W.Facilitykey
+		INTO #FacilityAction
+		FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] ALH
+		JOIN [OperationsDataMart].[Dimensions].[Wells] W
+		  ON LEFT(ALH.assetAPI, 10) = W.API
+	""")
+
+	cursor.execute(SQLCommand)
+	SQLCommand = ("""
 		SELECT	D.FacilityKey
 				,D.LocationID
 				,D.CalcDate
@@ -33,7 +45,7 @@ def dispatch_pull():
 				,ALH.[Action Type - No count]
 				,ALH.[Action Type 1]
 				,ALH.[CommentAction]
-		  FROM (SELECT	FacilityKey
+			FROM (SELECT	FacilityKey
 						,D.LocationID
 						,CalcDate
 						,SiteName
@@ -49,10 +61,11 @@ def dispatch_pull():
 						GROUP BY LocationID, CAST(CalcDate AS DATE)) AS MD
 				ON	MD.LocationID = D.LocationID
 				AND MD.MDate = D.CalcDate) D
-		  JOIN [OperationsDataMart].[Dimensions].[Facilities] F
+
+			JOIN [OperationsDataMart].[Dimensions].[Facilities] F
 			ON F.Facilitykey = D.Facilitykey
-		  LEFT OUTER JOIN [TeamOptimizationEngineering].[Reporting].[ActionListHistory] ALH
-			ON LEFT(ALH.assetAPI, 10) = LEFT(D.LocationID, 10)
+			LEFT OUTER JOIN #FacilityAction ALH
+				ON ALH.Facilitykey = D.Facilitykey
 			AND CAST(D.CalcDate AS DATE) = CAST(ALH.[Action Date] AS DATE)
 		WHERE F.BusinessUnit IN ('West', 'North')
 		AND LEN(D.Person_assigned) > 2
@@ -175,15 +188,14 @@ def missed_dispatch(df):
 								as_index=False).count()
 
 		dispatch_df.sort_values('Action Type - No count', inplace=True)
-
 		ax.barh(np.arange(len(dispatch_df['Action Type - No count'].unique())),
 				dispatch_df['PriorityLevel'].values / drivers[bu.lower()] / 5.3, .8,
 				color=colors[bu.lower()])
 		ax.set_xlabel('Count of Action per Driver per Month')
 		ax.set_title(bu)
-		ax.set_xlim(0, 8)
+		ax.set_xlim(0, 9)
 
-	ax1.text(5.5, .9, 'West Gauge = 19.2', fontsize=9)
+	ax1.text(6, .9, 'West Gauge = 19.2', fontsize=9)
 	ax1.set_yticks(np.arange(len(dispatch_df['Action Type - No count'].unique())))
 	ax1.set_yticklabels(sorted(list(dispatch_df['Action Type - No count'].unique())))
 

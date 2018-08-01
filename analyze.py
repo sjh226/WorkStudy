@@ -470,7 +470,8 @@ def work_dist(df, graph_per='driver'):
 	width = .225
 
 	for bu in df['BusinessUnit'].unique():
-		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu, :].sort_values('Action Type - No count')
+		bu_df = grouped_df.loc[grouped_df['BusinessUnit'] == bu,
+							   :].sort_values('Action Type - No count')
 
 		if graph_per == 'driver':
 			divisor = drivers[bu.lower()] / 60
@@ -864,13 +865,15 @@ def pie(df):
 	for i, action in enumerate(list(hours_df['Action Type - No count'].unique()) + ['Misc']):
 		colors[action] = color_list[i]
 
+	bu_misc = {'west': 2.9e+05, 'east': 1.3e+05, 'north': 0, 'midcon': 2e+05}
 	for bu, axis in zip(df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
 		bu_df = hours_df.loc[hours_df['BusinessUnit'] == bu, :]
 		bu_df.sort_values('agg_dur', inplace=True)
-		misc = bu_df.loc[bu_df['agg_dur'] < 2e+05, 'agg_dur'].sum()
-		bu_df = bu_df.append(pd.DataFrame([[bu, 'Misc', misc]],
-							 columns=bu_df.columns))
-		bu_df = bu_df.loc[bu_df['agg_dur'] >= 2e+05, :]
+		misc = bu_df.loc[bu_df['agg_dur'] < bu_misc[bu.lower()], 'agg_dur'].sum()
+		if misc > 0:
+			bu_df = bu_df.append(pd.DataFrame([[bu, 'Misc', misc]],
+								 columns=bu_df.columns))
+		bu_df = bu_df.loc[bu_df['agg_dur'] >= bu_misc[bu.lower()], :]
 
 		bu_colors = [colors[action] for action in bu_df['Action Type - No count'].unique()]
 
@@ -939,10 +942,10 @@ if __name__ == '__main__':
 	# site_report(wh_df[wh_df['Action Type - No count'] == 'Site Report'])
 
 	# action_count(a_df)
-	for g_type in ['all']:
-		work_dist(wh_df[['BusinessUnit', 'Action Type - No count',
-						 'Action Type 1', 'CommentAction', 'agg_dur',
-						 'Action Date']], g_type)
+	# for g_type in ['all']:
+	# 	work_dist(wh_df[['BusinessUnit', 'Action Type - No count',
+	# 					 'Action Type 1', 'CommentAction', 'agg_dur',
+	# 					 'Action Date']], g_type)
 
 	# dispatch_wm(dis_df.loc[(dis_df['Action Type - No count'] == 'WM Completed') &
 	# 				   	   (dis_df['CommentAction'].notnull()), :])

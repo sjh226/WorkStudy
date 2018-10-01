@@ -6,6 +6,77 @@ import matplotlib.pyplot as plt
 from matplotlib import pylab
 
 
+def geotab_pull():
+	try:
+		connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
+									r'Server=SQLDW-L48.BP.Com;'
+									r'Database=TeamOptimizationEngineering;'
+									r'trusted_connection=yes'
+									)
+	except pyodbc.Error:
+		print("Connection Error")
+		sys.exit()
+
+	cursor = connection.cursor()
+	SQLCommand = ("""
+		DROP TABLE IF EXISTS #tmp;
+
+		SELECT	[_id],
+				[TankCode],
+				[gaugeDate],
+				[liquidAmount],
+		      	ROW_NUMBER() OVER(PARTITION BY [tankcode] ORDER BY [gaugedate] DESC) AS [rk]
+		INTO 	[#TMP]
+		FROM    EDW.Enbase.GaugeData AS GD
+		WHERE   [liquidAmount] IS NOT NULL;
+	""")
+
+	cursor.execute(SQLCommand)
+
+	SQLCommand = ("""
+		DROP TABLE IF EXISTS #CarryOverIds;
+
+		SELECT 	[t1].[_id]
+		  INTO 	[#CarryOverIds]
+		  FROM  #TMP AS T
+		INNER JOIN #TMP AS T1
+				ON T1.RK = T.Rk - 1
+		       AND T.tankCode = T1.tankCode;
+	""")
+
+	cursor.execute(SQLCommand)
+
+	SQLCommand = ("""
+		SELECT	*
+			FROM [TeamOptimizationEngineering].[Reporting].[ActionListHistory] AL
+			JOIN (SELECT	LEFT(RIGHT(["id"], LEN(["id"]) - 1), LEN(["id"]) - 2) AS id
+							,CASE WHEN LEN(["avg_dur_hrs"]) >= 2
+								  THEN LEFT(RIGHT(["avg_dur_hrs"], LEN(["avg_dur_hrs"]) - 1), LEN(["avg_dur_hrs"]) - 2)
+								  ELSE ["avg_dur_hrs"] END AS agg_dur
+					FROM [TeamOperationsAnalytics].[dbo].[707_SQL]) Hrs
+			  ON LEFT(Hrs.id, 33) = LEFT(AL._id, 33)
+		WHERE [Action Date] >= '2017-03-30'
+			AND [Action Date] <= '2018-04-12'
+			AND _id NOT IN (SELECT *
+				  			FROM #CarryOverIds)
+			AND ISNUMERIC(agg_dur) = 1
+			AND agg_dur NOT LIKE '.'
+	""")
+
+	cursor.execute(SQLCommand)
+	results = cursor.fetchall()
+
+	df = pd.DataFrame.from_records(results)
+	connection.close()
+
+	try:
+		df.columns = pd.DataFrame(np.matrix(cursor.description))[0]
+	except:
+		df = None
+		print('Dataframe is empty')
+
+	return df.drop_duplicates()
+
 def action_pull():
 	try:
 		connection = pyodbc.connect(r'Driver={SQL Server Native Client 11.0};'
@@ -853,10 +924,11 @@ def pie(df):
 					  (df['Action Type - No count'] != 'rodPumpSpeedChange') &
 					  (df['Action Type - No count'] != 'warmBootRTU'), :]
 
-	df_short = impute(df_short)
+	# df_short = impute(df_short)
 
 	hours_df = df_short.groupby(['BusinessUnit', 'Action Type - No count'], as_index=False).sum()
 	hours_df.dropna(inplace=True)
+	print(hours_df)
 
 	color_list = ['#5bd81c', '#ffb200', '#ba5600', '#7c20c1', '#6688e8',
 				  '#ad1362', '#edde8e', '#0c590b', '#008fa8', '#d68ffc',
@@ -865,15 +937,15 @@ def pie(df):
 	for i, action in enumerate(list(hours_df['Action Type - No count'].unique()) + ['Misc']):
 		colors[action] = color_list[i]
 
-	bu_misc = {'west': 2.9e+05, 'east': 1.3e+05, 'north': 0, 'midcon': 2e+05}
+	# bu_misc = {'west': 2.9e+05, 'east': 1.3e+05, 'north': 0, 'midcon': 2e+05}
 	for bu, axis in zip(df['BusinessUnit'].unique(), [ax1, ax2, ax3, ax4]):
 		bu_df = hours_df.loc[hours_df['BusinessUnit'] == bu, :]
 		bu_df.sort_values('agg_dur', inplace=True)
-		misc = bu_df.loc[bu_df['agg_dur'] < bu_misc[bu.lower()], 'agg_dur'].sum()
-		if misc > 0:
-			bu_df = bu_df.append(pd.DataFrame([[bu, 'Misc', misc]],
-								 columns=bu_df.columns))
-		bu_df = bu_df.loc[bu_df['agg_dur'] >= bu_misc[bu.lower()], :]
+		# misc = bu_df.loc[bu_df['agg_dur'] < bu_misc[bu.lower()], 'agg_dur'].sum()
+		# if misc > 0:
+		# 	bu_df = bu_df.append(pd.DataFrame([[bu, 'Misc', misc]],
+		# 						 columns=bu_df.columns))
+		# bu_df = bu_df.loc[bu_df['agg_dur'] >= bu_misc[bu.lower()], :]
 
 		bu_colors = [colors[action] for action in bu_df['Action Type - No count'].unique()]
 
@@ -899,20 +971,26 @@ def impute(df):
 
 
 if __name__ == '__main__':
+	# geo_df = geotab_pull()
+	# geo_df.to_csv('data/geo_hours.csv')
+
 	# action_df = action_pull()
 	# action_df.to_csv('data/comment_action.csv')
 	a_df = pd.read_csv('data/comment_action.csv', encoding='ISO-8859-1')
-	hour_df = pd.read_csv('data/ws_hours.csv')
-	left_df = pd.merge(a_df, hour_df, left_on='_id', right_on='id', how='left')
-	wh_df = left_df[left_df['agg_dur'].notnull()]
+	# hour_df = pd.read_csv('data/geo_hours.csv', encoding='ISO-8859-1')
+	# left_df = pd.merge(a_df, hour_df, left_on='_id', right_on='id', how='left')
+	# wh_df = left_df[left_df['agg_dur'].notnull()]
 	# stacked_actions(wh_df, plot_type='count')
 	# stacked_actions(wh_df, plot_type='hours')
 	# venting(wh_df.loc[(wh_df['BusinessUnit'] == 'North') &
 	# 				  (wh_df['Action Type - No count'] == 'Vent'),
 	# 				  ['Action Date', 'agg_dur']])
-	left_df['Action Date'] = pd.to_datetime(left_df['Action Date'])
-	pie(left_df.loc[(left_df['Action Date'] >= '2017-12-01') &
-				  	(left_df['Action Date'] < '2018-05-01'),
+	# left_df['Action Date'] = pd.to_datetime(left_df['Action Date'])
+
+	geoh_df = pd.read_csv('data/geo_hours.csv', encoding='ISO-8859-1')
+	geoh_df.loc[:, 'agg_dur'] = geoh_df.loc[:, 'agg_dur'].apply(lambda x: round(float(x), 2))
+	pie(geoh_df.loc[(geoh_df['Action Date'] >= '2017-12-01') &
+				  	(geoh_df['Action Date'] < '2018-05-01'),
 				  	['Action Type - No count', 'Action Type 1',
 					 'CommentAction', 'agg_dur', 'BusinessUnit']])
 
